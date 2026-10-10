@@ -607,35 +607,44 @@ def _darwin_thermal(logical_cpus: int, thermal_pressure: str | None = None) -> d
     available = integer("CPU_Available_CPUs")
     speed = integer("CPU_Speed_Limit")
 
-    constrained = False
+    # Keep thermal-pressure telemetry distinct from an actual CPU-capacity
+    # restriction.  On Darwin, powermetrics may report a non-nominal thermal
+    # pressure while pmset still exposes the full scheduler/speed/CPU capacity.
+    # A continuously running fan or elevated thermal pressure is therefore
+    # evidence, not by itself proof that benchmark throughput is being capped.
+    performance_limited = False
     known = False
     for value in (scheduler, speed):
         if value is not None:
             known = True
-            constrained = constrained or value < 100
+            performance_limited = performance_limited or value < 100
     if available is not None:
         known = True
-        constrained = constrained or available < logical_cpus
+        performance_limited = performance_limited or available < logical_cpus
 
     pressure = thermal_pressure.lower() if isinstance(thermal_pressure, str) else None
+    pressure_constrained = pressure is not None and pressure not in {"nominal"}
     if pressure is not None:
         known = True
-        constrained = constrained or pressure not in {"nominal"}
 
     warning_text = stdout.lower()
     if "no thermal warning" in warning_text or "no performance warning" in warning_text:
         known = True
     if "thermal warning" in warning_text and "no thermal warning" not in warning_text:
-        constrained = True
+        performance_limited = True
         known = True
     if "performance warning" in warning_text and "no performance warning" not in warning_text:
-        constrained = True
+        performance_limited = True
         known = True
+
+    constrained = performance_limited or pressure_constrained
 
     return {
         "thermal_state": "constrained" if constrained else "nominal" if known else "unknown",
         "thermal_pressure": pressure,
-        "throttling_active": constrained if known else None,
+        "thermal_pressure_constrained": pressure_constrained if pressure is not None else None,
+        "performance_limit_active": performance_limited if known else None,
+        "throttling_active": performance_limited if known else None,
         "cpu_scheduler_limit_percent": scheduler,
         "cpu_available_cpus": available,
         "cpu_speed_limit_percent": speed,
@@ -850,14 +859,29 @@ def calibrate_host_state(
         snapshot = capture_host_state(control, session=session)
         static = static_readiness(snapshot, control)
         observed_snapshots += 1
-        last_reasons = list(static["reasons"])
+
+        # CPU-busy telemetry is required to build the calibrated envelope, but
+        # an individual missing sample is not a fatal capability loss.  The
+        # Darwin provider obtains this value from a short `top` invocation,
+        # which can occasionally fail or time out under transient host load.
+        # Treat that exactly like any other rejected calibration sample: reset
+        # the consecutive clean window and wait for a fresh sample.  Persistent
+        # loss is still bounded by the calibration timeout.
+        busy = snapshot.get("load", {}).get("cpu_busy_percent")
+        sample_reasons = list(static["reasons"])
+        sample_ready = bool(static["ready"])
+        if sample_ready and not isinstance(busy, (int, float)):
+            sample_reasons.append("cpu-busy-state-unavailable")
+            sample_ready = False
+        last_reasons = sample_reasons
 
         snapshot["calibration"] = {
             "observed_snapshot": observed_snapshots,
-            "accepted_sample": accepted_samples + 1 if static["ready"] else None,
+            "accepted_sample": accepted_samples + 1 if sample_ready else None,
             "samples": target_samples,
             "static_ready": static["ready"],
-            "reasons": static["reasons"],
+            "sample_ready": sample_ready,
+            "reasons": sample_reasons,
             "window_resets": window_resets,
         }
         if on_snapshot is not None:
@@ -868,7 +892,7 @@ def calibrate_host_state(
                 "host calibration cannot proceed: " + ", ".join(static["reasons"])
             )
 
-        if not static["ready"]:
+        if not sample_ready:
             rejected_snapshots += 1
             if accepted_samples:
                 window_resets += 1
@@ -876,9 +900,6 @@ def calibrate_host_state(
             busy_values.clear()
             temperature_values.clear()
         else:
-            busy = snapshot.get("load", {}).get("cpu_busy_percent")
-            if not isinstance(busy, (int, float)):
-                raise FrameworkError("host calibration requires CPU busy telemetry")
             busy_values.append(float(busy))
 
             temperature = snapshot.get("temperature", {}).get("temperature_c")
@@ -958,8 +979,12 @@ def readiness(
         else:
             current_busy = snapshot.get("load", {}).get("cpu_busy_percent")
             if not isinstance(current_busy, (int, float)):
+                # A single CPU-busy sample can be unavailable transiently
+                # (for example if the Darwin `top` snapshot times out).
+                # Capabilities were verified before execution, so make this a
+                # retryable readiness miss rather than aborting the campaign.
+                # Persistent loss still ends at the readiness timeout.
                 reasons.append("cpu-busy-state-unavailable")
-                fatal = True
             elif float(current_busy) > float(upper_limit):
                 reasons.append("cpu-busy-above-calibrated-envelope")
 

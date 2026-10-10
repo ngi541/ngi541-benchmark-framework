@@ -11,6 +11,7 @@ if str(BENCHMARK_DIR) not in sys.path:
     sys.path.insert(0, str(BENCHMARK_DIR))
 
 from framework.host_state import (
+    _darwin_thermal,
     _launch_persistent_powermetrics,
     _nearest_rank,
     _parse_temperature,
@@ -99,6 +100,37 @@ class DarwinSamplerLaunchTests(unittest.TestCase):
         self.assertNotIn("start_new_session", kwargs)
 
 
+
+
+class DarwinThermalClassificationTests(unittest.TestCase):
+    def test_thermal_pressure_alone_is_not_classified_as_throttling(self):
+        output = (
+            "CPU_Scheduler_Limit = 100\n"
+            "CPU_Available_CPUs = 8\n"
+            "CPU_Speed_Limit = 100\n"
+            "No thermal warning level has been recorded\n"
+            "No performance warning level has been recorded\n"
+        )
+        with mock.patch("framework.host_state._run", return_value=(0, output, "")):
+            thermal = _darwin_thermal(8, thermal_pressure="constrained")
+
+        self.assertEqual(thermal["thermal_state"], "constrained")
+        self.assertTrue(thermal["thermal_pressure_constrained"])
+        self.assertFalse(thermal["performance_limit_active"])
+        self.assertFalse(thermal["throttling_active"])
+
+    def test_pmset_capacity_reduction_is_classified_as_throttling(self):
+        output = (
+            "CPU_Scheduler_Limit = 100\n"
+            "CPU_Available_CPUs = 8\n"
+            "CPU_Speed_Limit = 80\n"
+        )
+        with mock.patch("framework.host_state._run", return_value=(0, output, "")):
+            thermal = _darwin_thermal(8, thermal_pressure="nominal")
+
+        self.assertTrue(thermal["performance_limit_active"])
+        self.assertTrue(thermal["throttling_active"])
+
 class TemperatureParsingTests(unittest.TestCase):
     def test_powermetrics_temperature_is_parsed(self):
         self.assertEqual(
@@ -163,6 +195,25 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(calibration["window_resets"], 1)
         self.assertEqual(calibration["cpu_busy_percent"]["median"], 14.0)
         self.assertEqual(len(seen), 7)
+
+
+    def test_calibration_retries_transient_missing_cpu_busy_and_restarts_window(self):
+        good1 = self._snapshot(10.0)
+        missing = self._snapshot(None)
+        stable = [self._snapshot(v) for v in (12.0, 13.0, 14.0, 15.0, 16.0)]
+        seen = []
+        with mock.patch(
+            "framework.host_state.capture_host_state",
+            side_effect=[good1, missing, *stable],
+        ):
+            calibration = calibrate_host_state(self._control(), on_snapshot=seen.append)
+
+        self.assertEqual(calibration["samples_collected"], 5)
+        self.assertEqual(calibration["snapshots_observed"], 7)
+        self.assertEqual(calibration["snapshots_rejected_static"], 1)
+        self.assertEqual(calibration["window_resets"], 1)
+        self.assertEqual(calibration["cpu_busy_percent"]["median"], 14.0)
+        self.assertIn("cpu-busy-state-unavailable", seen[1]["calibration"]["reasons"])
 
     def test_calibration_times_out_instead_of_failing_immediately_on_static_block(self):
         control = self._control()
@@ -246,6 +297,34 @@ class ReadinessTests(unittest.TestCase):
         self.assertFalse(result["ready"])
         self.assertTrue(result["fatal"])
         self.assertIn("cpu-busy-calibration-unavailable", result["reasons"])
+
+
+    def test_missing_cpu_busy_sample_is_retryable(self):
+        snapshot = self._snapshot(None)
+        result = readiness(snapshot, self._control(), self._calibration())
+        self.assertFalse(result["ready"])
+        self.assertFalse(result["fatal"])
+        self.assertIn("cpu-busy-state-unavailable", result["reasons"])
+
+    def test_wait_until_ready_retries_transient_missing_cpu_busy(self):
+        control = self._control(consecutive=2)
+        calibration = self._calibration(20.0)
+        samples = [
+            self._snapshot(None),
+            self._snapshot(10.0),
+            self._snapshot(11.0),
+        ]
+        seen = []
+        with mock.patch("framework.host_state.capture_host_state", side_effect=samples):
+            snapshot, count, _ = wait_until_ready(
+                control,
+                calibration=calibration,
+                on_snapshot=seen.append,
+            )
+        self.assertEqual(count, 3)
+        self.assertEqual(snapshot["readiness"]["consecutive_ready_samples"], 2)
+        self.assertFalse(seen[0]["readiness"]["fatal"])
+        self.assertIn("cpu-busy-state-unavailable", seen[0]["readiness"]["reasons"])
 
     def test_three_consecutive_samples_are_required(self):
         control = self._control(consecutive=3)
