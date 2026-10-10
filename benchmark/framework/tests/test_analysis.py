@@ -15,6 +15,7 @@ if str(BENCHMARK_DIR) not in sys.path:
 
 from framework.analysis import (
     _first_valid_measurement,
+    _order_effect_statistics,
     _paired_statistics,
     _paired_svg,
     _requests_svg,
@@ -73,6 +74,24 @@ class AnalysisStatisticsTests(unittest.TestCase):
         self.assertEqual(stats["n"], 1)
         self.assertIsNone(stats["sample_standard_deviation"])
         self.assertIsNone(stats["coefficient_of_variation_percent"])
+
+
+    def test_order_effect_is_split_by_first_variant(self):
+        rows = [
+            {"condition_id": "condition-0001", "first_variant": "stock", "delta_percent": 3.0},
+            {"condition_id": "condition-0001", "first_variant": "stock", "delta_percent": 5.0},
+            {"condition_id": "condition-0001", "first_variant": "ngi541-direct", "delta_percent": -4.0},
+            {"condition_id": "condition-0001", "first_variant": "ngi541-direct", "delta_percent": -2.0},
+        ]
+        _, summary = _order_effect_statistics(
+            rows, warning_pp=2.0, strong_warning_pp=5.0
+        )
+        effect = summary["condition-0001"]
+        self.assertAlmostEqual(
+            effect["absolute_median_gap_percentage_points"],
+            7.0,
+        )
+        self.assertEqual(effect["warning_level"], "strongly-order-sensitive")
 
     def test_paired_statistics(self):
         stats = _paired_statistics([

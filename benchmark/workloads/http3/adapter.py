@@ -13,6 +13,16 @@ from pathlib import Path
 from typing import Any
 
 from framework.ids import utc_rfc3339
+from framework.host_state import (
+    append_jsonl,
+    calibrate_host_state,
+    capture_host_state,
+    host_state_session,
+    normalize_measurement_control,
+    static_readiness,
+    validate_host_state_capabilities,
+    wait_until_ready,
+)
 from framework.io_utils import (
     FrameworkError,
     append_log,
@@ -114,6 +124,9 @@ def resolve_http3_config(
 
     resolved = dict(resolved)
     resolved["parameters"] = parameters
+    resolved["measurement_control"] = normalize_measurement_control(
+        resolved.get("measurement_control")
+    )
     if conditions is not None:
         resolved["conditions"] = conditions
     resolved["workload_contract"] = {
@@ -233,6 +246,55 @@ def _check_nginx_variant(
     }
 
 
+def _stage_shared_artifacts(
+    experiment_dir: Path,
+    resolved: dict[str, Any],
+    runtime_bindings: dict[str, Any],
+) -> dict[str, Any] | None:
+    control = normalize_measurement_control(resolved.get("measurement_control"))
+    if not control["runtime"]["stage_artifacts_once"]:
+        return None
+
+    repo_root = experiment_dir.parents[1]
+    root = experiment_dir / "execution" / "artifacts"
+    records: dict[str, Any] = {}
+
+    for variant in resolved["variants"]:
+        binding = runtime_bindings["variants"][variant]
+        binary_dst = root / variant / "bin" / "nginx"
+        _verify_and_copy(binding["binary"], repo_root, binary_dst)
+        binary_dst.chmod(
+            binary_dst.stat().st_mode
+            | stat.S_IXUSR
+            | stat.S_IXGRP
+            | stat.S_IXOTH
+        )
+        libraries = []
+        for library in binding.get("libraries", []):
+            library_dst = root / variant / "lib" / library["basename"]
+            _verify_and_copy(library, repo_root, library_dst)
+            libraries.append({
+                "basename": library["basename"],
+                "path": str(library_dst.relative_to(experiment_dir)),
+                "sha256": library["sha256"],
+            })
+        records[variant] = {
+            "binary": {
+                "path": str(binary_dst.relative_to(experiment_dir)),
+                "sha256": binding["binary"]["sha256"],
+            },
+            "libraries": libraries,
+        }
+
+    manifest = {
+        "schema_version": 1,
+        "policy": "stage-once-per-experiment",
+        "variants": records,
+    }
+    atomic_write_json(root / "manifest.json", manifest)
+    return manifest
+
+
 def prepare_http3_workload(
     experiment_dir: Path,
     resolved: dict[str, Any],
@@ -312,6 +374,22 @@ def prepare_http3_workload(
         },
     ]
 
+    control = normalize_measurement_control(resolved.get("measurement_control"))
+    with host_state_session(control) as host_session:
+        host_capabilities = validate_host_state_capabilities(
+            control, session=host_session
+        )
+    atomic_write_json(
+        preflight_dir / "host-state.json",
+        host_capabilities,
+    )
+    if control["host_state"]["enabled"]:
+        checks.append({
+            "name": "host-state-capabilities",
+            "passed": host_capabilities["passed"],
+            "details": "execution/workload/preflight/host-state.json",
+        })
+
     repo_root = experiment_dir.parents[1]
     bindings = runtime_bindings["variants"]
 
@@ -341,6 +419,12 @@ def prepare_http3_workload(
         preflight,
     )
 
+    shared_artifacts = _stage_shared_artifacts(
+        experiment_dir,
+        resolved,
+        runtime_bindings,
+    )
+
     manifest = {
         "schema_version": 1,
         "adapter": "http3",
@@ -360,6 +444,10 @@ def prepare_http3_workload(
             ),
         },
         "preflight": "execution/workload/preflight.json",
+        "runtime_artifacts": (
+            "execution/artifacts/manifest.json"
+            if shared_artifacts is not None else None
+        ),
     }
     atomic_write_json(
         workload_dir / "manifest.json",
@@ -452,8 +540,10 @@ def _materialize_runtime(
     parameters: dict[str, Any],
     workload_manifest: dict[str, Any],
     dependencies: dict[str, Any],
+    measurement_control: dict[str, Any],
 ) -> tuple[Path, Path, dict[str, str]]:
     repo_root = experiment_dir.parents[1]
+    control = normalize_measurement_control(measurement_control)
 
     runtime = (
         experiment_dir
@@ -465,28 +555,52 @@ def _materialize_runtime(
     if runtime.exists():
         shutil.rmtree(runtime)
 
-    for rel in ("bin", "lib", "conf", "html", "logs"):
+    for rel in ("conf", "html", "logs"):
         (runtime / rel).mkdir(parents=True, exist_ok=True)
 
-    nginx_path = runtime / "bin" / "nginx"
-    _verify_and_copy(
-        binding["binary"],
-        repo_root,
-        nginx_path,
-    )
-    nginx_path.chmod(
-        nginx_path.stat().st_mode
-        | stat.S_IXUSR
-        | stat.S_IXGRP
-        | stat.S_IXOTH
-    )
-
-    for library in binding.get("libraries", []):
+    if control["runtime"]["stage_artifacts_once"]:
+        manifest_path = experiment_dir / "execution" / "artifacts" / "manifest.json"
+        if not manifest_path.is_file():
+            raise FrameworkError("shared runtime artifact manifest is missing")
+        artifact_manifest = read_json(manifest_path)
+        variant_record = artifact_manifest.get("variants", {}).get(variant)
+        if not variant_record:
+            raise FrameworkError(f"shared runtime artifact is missing variant: {variant}")
+        nginx_path = experiment_dir / variant_record["binary"]["path"]
+        if sha256_file(nginx_path) != variant_record["binary"]["sha256"]:
+            raise FrameworkError(f"shared runtime binary hash mismatch: {variant}")
+        library_dirs = []
+        for library in variant_record.get("libraries", []):
+            library_path = experiment_dir / library["path"]
+            if sha256_file(library_path) != library["sha256"]:
+                raise FrameworkError(
+                    f"shared runtime library hash mismatch: {library['basename']}"
+                )
+            library_dirs.append(str(library_path.parent))
+    else:
+        for rel in ("bin", "lib"):
+            (runtime / rel).mkdir(parents=True, exist_ok=True)
+        nginx_path = runtime / "bin" / "nginx"
         _verify_and_copy(
-            library,
+            binding["binary"],
             repo_root,
-            runtime / "lib" / library["basename"],
+            nginx_path,
         )
+        nginx_path.chmod(
+            nginx_path.stat().st_mode
+            | stat.S_IXUSR
+            | stat.S_IXGRP
+            | stat.S_IXOTH
+        )
+        library_dirs = []
+        for library in binding.get("libraries", []):
+            destination = runtime / "lib" / library["basename"]
+            _verify_and_copy(
+                library,
+                repo_root,
+                destination,
+            )
+            library_dirs.append(str(destination.parent))
 
     for payload in workload_manifest["payloads"]:
         source = experiment_dir / payload["path"]
@@ -494,10 +608,11 @@ def _materialize_runtime(
             raise FrameworkError(
                 f"sealed payload hash mismatch: {payload['path']}"
             )
-        shutil.copy2(
-            source,
-            runtime / "html" / Path(payload["path"]).name,
-        )
+        destination = runtime / "html" / Path(payload["path"]).name
+        try:
+            os.link(source, destination)
+        except OSError:
+            shutil.copy2(source, destination)
 
     config = _nginx_config(
         workers=int(parameters["workers"]),
@@ -540,18 +655,13 @@ def _materialize_runtime(
         )
 
     env = dict(os.environ)
-    runtime_lib = str(runtime / "lib")
-
-    for key_name in ("DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"):
-        previous = env.get(key_name)
-        env[key_name] = (
-            runtime_lib
-            if not previous
-            else runtime_lib + os.pathsep + previous
-        )
+    if library_dirs:
+        joined = os.pathsep.join(dict.fromkeys(library_dirs))
+        for key_name in ("DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"):
+            previous = env.get(key_name)
+            env[key_name] = joined if not previous else joined + os.pathsep + previous
 
     return runtime, nginx_path, env
-
 
 def _curl_command(
     *,
@@ -830,8 +940,11 @@ def _aggregate_client_logs(
 def _execute_run(
     experiment_dir: Path,
     run: dict[str, Any],
+    *,
+    host_session=None,
+    host_calibration: dict[str, Any] | None = None,
+    host_calibration_id: str | None = None,
 ) -> dict[str, Any]:
-    repo_root = experiment_dir.parents[1]
     dependencies = read_json(
         experiment_dir / "provenance" / "dependencies.json"
     )
@@ -847,6 +960,7 @@ def _execute_run(
 
     parameters = dict(resolved["parameters"])
     parameters.update(run["parameters"])
+    control = normalize_measurement_control(resolved.get("measurement_control"))
 
     variant = run["variant"]
     binding = bindings["variants"][variant]
@@ -856,23 +970,40 @@ def _execute_run(
     )
 
     attempt_started_at = utc_rfc3339()
+    attempt_start_ns = time.perf_counter_ns()
     server = None
     server_stdout_handle = None
     server_stderr_handle = None
+    runtime: Path | None = None
+    phases: dict[str, int] = {}
 
     measurement: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "experiment_id": experiment_dir.name,
         "run_id": run["run_id"],
         "pair_id": run.get("pair_id"),
         "attempt": attempt_number,
         "variant": variant,
         "parameters": parameters,
+        "schedule": {
+            "sequence": run.get("sequence"),
+            "condition_id": run.get("condition_id"),
+            "condition_index": run.get("condition_index"),
+            "condition_position_in_round": run.get("condition_position_in_round"),
+            "repetition": run.get("repetition"),
+            "repetition_round": run.get("repetition_round", run.get("repetition")),
+            "pair_position": run.get("pair_position"),
+            "pair_order": run.get("pair_order"),
+        },
         "timing": {
             "started_at": attempt_started_at,
             "finished_at": attempt_started_at,
             "elapsed_ns": 0,
+            "attempt_started_at": attempt_started_at,
+            "attempt_finished_at": attempt_started_at,
+            "attempt_elapsed_ns": 0,
         },
+        "phases": phases,
         "requests": {
             "planned": (
                 int(parameters["clients"])
@@ -894,7 +1025,37 @@ def _execute_run(
         },
     }
 
+    def record_host_snapshot(snapshot: dict[str, Any], phase: str) -> None:
+        record = dict(snapshot)
+        record.update({
+            "experiment_id": experiment_dir.name,
+            "run_id": run["run_id"],
+            "pair_id": run.get("pair_id"),
+            "variant": variant,
+            "repetition": run.get("repetition"),
+            "condition_id": run.get("condition_id"),
+            "sequence": run.get("sequence"),
+            "phase": phase,
+            "host_calibration_id": host_calibration_id,
+        })
+        append_jsonl(experiment_dir / "raw" / "host-state.jsonl", record)
+
     try:
+        gate_phase = "pre-pair" if run.get("pair_position") in (None, 1) else "pre-variant"
+        gate_start = time.perf_counter_ns()
+        pre_snapshot, gate_samples, gate_wait_ns = wait_until_ready(
+            control,
+            calibration=host_calibration,
+            session=host_session,
+            on_snapshot=lambda snap: record_host_snapshot(snap, gate_phase),
+        )
+        phases["host_readiness_wait_ns"] = time.perf_counter_ns() - gate_start
+        measurement["observations"]["host_readiness_samples"] = gate_samples
+        measurement["observations"]["host_readiness_wait_ns"] = gate_wait_ns
+        measurement["observations"]["host_calibration_id"] = host_calibration_id
+        atomic_write_json(attempt_dir / "host-state-pre.json", pre_snapshot)
+
+        phase_start = time.perf_counter_ns()
         runtime, nginx, env = _materialize_runtime(
             experiment_dir,
             run["run_id"],
@@ -904,13 +1065,16 @@ def _execute_run(
             parameters,
             workload_manifest,
             dependencies,
+            control,
         )
+        phases["runtime_setup_ns"] = time.perf_counter_ns() - phase_start
 
         shutil.copy2(
             runtime / "conf" / "nginx.conf",
             attempt_dir / "nginx.conf",
         )
 
+        phase_start = time.perf_counter_ns()
         test_result = subprocess.run(
             [
                 str(nginx),
@@ -925,6 +1089,7 @@ def _execute_run(
             text=True,
             capture_output=True,
         )
+        phases["nginx_test_ns"] = time.perf_counter_ns() - phase_start
         atomic_write_text(
             attempt_dir / "nginx-test.stdout.log",
             test_result.stdout,
@@ -946,6 +1111,7 @@ def _execute_run(
             attempt_dir / "server.stderr.log"
         ).open("wb")
 
+        phase_start = time.perf_counter_ns()
         server = subprocess.Popen(
             [
                 str(nginx),
@@ -974,7 +1140,9 @@ def _execute_run(
             server_process=server,
             output_dir=attempt_dir,
         )
+        phases["server_start_probe_ns"] = time.perf_counter_ns() - phase_start
 
+        phase_start = time.perf_counter_ns()
         warm_ok, warm_rc, warm_failure = _run_clients(
             curl=curl,
             host=str(parameters["server_host"]),
@@ -989,10 +1157,30 @@ def _execute_run(
             output_dir=attempt_dir,
             phase="warmup",
         )
+        phases["warmup_ns"] = time.perf_counter_ns() - phase_start
         if not warm_ok:
             raise FrameworkError(
                 warm_failure or f"warmup failed with exit code {warm_rc}"
             )
+
+        if control["host_state"]["enabled"]:
+            pre_measurement_snapshot = capture_host_state(
+                control, session=host_session
+            )
+            pre_measurement_state = static_readiness(
+                pre_measurement_snapshot, control
+            )
+            pre_measurement_snapshot["readiness"] = pre_measurement_state
+            record_host_snapshot(pre_measurement_snapshot, "pre-measurement")
+            atomic_write_json(
+                attempt_dir / "host-state-pre-measurement.json",
+                pre_measurement_snapshot,
+            )
+            if pre_measurement_state["fatal"] or not pre_measurement_state["ready"]:
+                raise FrameworkError(
+                    "host state became unsuitable after warmup: "
+                    + ", ".join(pre_measurement_state["reasons"])
+                )
 
         measured_started_at = utc_rfc3339()
         start_ns = time.perf_counter_ns()
@@ -1012,6 +1200,7 @@ def _execute_run(
 
         end_ns = time.perf_counter_ns()
         elapsed_ns = end_ns - start_ns
+        phases["measurement_ns"] = elapsed_ns
 
         _aggregate_client_logs(attempt_dir, "measured")
 
@@ -1026,11 +1215,11 @@ def _execute_run(
             if elapsed_ns > 0 else None
         )
 
-        measurement["timing"] = {
+        measurement["timing"].update({
             "started_at": measured_started_at,
             "finished_at": utc_rfc3339(),
             "elapsed_ns": elapsed_ns,
-        }
+        })
         measurement["requests"]["completed"] = planned
         measurement["metrics"]["requests_per_second"] = requests_per_second
         measurement["execution"] = {
@@ -1049,6 +1238,7 @@ def _execute_run(
         }
 
     finally:
+        teardown_start = time.perf_counter_ns()
         if server is not None:
             _stop_server(server)
 
@@ -1057,13 +1247,33 @@ def _execute_run(
         if server_stderr_handle is not None:
             server_stderr_handle.close()
 
+        if runtime is not None:
+            error_log = runtime / "logs" / "error.log"
+            if error_log.is_file():
+                shutil.copy2(error_log, attempt_dir / "nginx-error.log")
+        phases["teardown_ns"] = time.perf_counter_ns() - teardown_start
+
+        if control["host_state"]["enabled"]:
+            try:
+                post_snapshot = capture_host_state(control, session=host_session)
+                post_snapshot["readiness"] = {"ready": None, "reasons": [], "fatal": False}
+                record_host_snapshot(post_snapshot, "post-variant")
+                atomic_write_json(attempt_dir / "host-state-post.json", post_snapshot)
+            except Exception as host_exc:
+                measurement["observations"]["post_host_state_error"] = str(host_exc)
+
+        if runtime is not None and control["runtime"]["cleanup_attempt_runtime"]:
+            shutil.rmtree(runtime, ignore_errors=True)
+
+        attempt_finished_at = utc_rfc3339()
+        measurement["timing"]["attempt_finished_at"] = attempt_finished_at
+        measurement["timing"]["attempt_elapsed_ns"] = time.perf_counter_ns() - attempt_start_ns
         atomic_write_json(
             attempt_dir / "measurement.json",
             measurement,
         )
 
     return measurement
-
 
 def _recount(
     experiment_dir: Path,
@@ -1086,6 +1296,20 @@ def _recount(
     return completed, failed
 
 
+def _allocate_host_control_session(experiment_dir: Path) -> tuple[str, Path]:
+    root = experiment_dir / "raw" / "host-calibration"
+    root.mkdir(parents=True, exist_ok=True)
+    numbers: list[int] = []
+    for path in root.glob("session-*.json"):
+        try:
+            numbers.append(int(path.stem.split("-", 1)[1]))
+        except (IndexError, ValueError):
+            continue
+    number = max(numbers, default=0) + 1
+    session_id = f"session-{number:04d}"
+    return session_id, root / f"{session_id}.json"
+
+
 def execute_http3_schedule(
     experiment_dir: Path,
 ) -> None:
@@ -1104,25 +1328,116 @@ def execute_http3_schedule(
     schedule = read_json(
         experiment_dir / "execution" / "schedule.json"
     )
+    resolved = read_json(experiment_dir / "config" / "resolved.json")
+    control = normalize_measurement_control(resolved.get("measurement_control"))
 
     try:
-        for run in schedule["runs"]:
-            if _latest_valid_attempt(
-                experiment_dir,
-                run["run_id"],
-            ):
-                continue
+        with host_state_session(control) as host_session:
+            calibration_id: str | None = None
+            calibration: dict[str, Any] | None = None
 
-            append_log(
-                experiment_dir / "logs" / "framework.log",
-                f"{utc_rfc3339()} executing "
-                f"{run['run_id']} variant={run['variant']}",
-            )
+            if control["host_state"]["enabled"]:
+                capabilities = validate_host_state_capabilities(
+                    control, session=host_session
+                )
+                if not capabilities["passed"]:
+                    raise FrameworkError(
+                        "host-state capabilities failed before execution: "
+                        + "; ".join(capabilities.get("errors", []))
+                    )
 
-            measurement = _execute_run(
-                experiment_dir,
-                run,
-            )
+                if control["calibration"]["enabled"]:
+                    calibration_id, calibration_path = _allocate_host_control_session(
+                        experiment_dir
+                    )
+
+                    def record_calibration_snapshot(snapshot: dict[str, Any]) -> None:
+                        record = dict(snapshot)
+                        record.update({
+                            "experiment_id": experiment_dir.name,
+                            "run_id": None,
+                            "pair_id": None,
+                            "variant": None,
+                            "repetition": None,
+                            "condition_id": None,
+                            "sequence": None,
+                            "phase": "calibration",
+                            "host_calibration_id": calibration_id,
+                        })
+                        append_jsonl(
+                            experiment_dir / "raw" / "host-state.jsonl",
+                            record,
+                        )
+
+                    print(
+                        "host-calibration: collecting "
+                        f"{control['calibration']['samples']} idle samples; "
+                        "keep the benchmark host idle"
+                    )
+                    calibration = calibrate_host_state(
+                        control,
+                        session=host_session,
+                        on_snapshot=record_calibration_snapshot,
+                    )
+                    calibration = dict(calibration)
+                    calibration["session_id"] = calibration_id
+                    atomic_write_json(calibration_path, calibration)
+                    busy = calibration["cpu_busy_percent"]
+                    print(
+                        "host-calibration: PASS "
+                        f"median={busy['median']:.1f}% "
+                        f"q{int(round(busy['upper_quantile'] * 100))}="
+                        f"{busy['upper_limit']:.1f}%"
+                    )
+
+            for run in schedule["runs"]:
+                if _latest_valid_attempt(
+                    experiment_dir,
+                    run["run_id"],
+                ):
+                    continue
+
+                append_log(
+                    experiment_dir / "logs" / "framework.log",
+                    f"{utc_rfc3339()} executing "
+                    f"{run['run_id']} variant={run['variant']}",
+                )
+
+                measurement = _execute_run(
+                    experiment_dir,
+                    run,
+                    host_session=host_session,
+                    host_calibration=calibration,
+                    host_calibration_id=calibration_id,
+                )
+
+                completed, failed = _recount(
+                    experiment_dir,
+                    schedule,
+                )
+                update_run_counts(
+                    experiment_dir,
+                    completed=completed,
+                    failed=failed,
+                )
+
+                if not measurement["execution"]["valid"]:
+                    transition(
+                        experiment_dir,
+                        "FAILED",
+                        failure={
+                            "stage": "running",
+                            "message": (
+                                measurement["execution"]["failure"]
+                                or "HTTP/3 run failed"
+                            ),
+                            "run_id": run["run_id"],
+                        },
+                    )
+                    raise FrameworkError(
+                        f"HTTP/3 run failed: {run['run_id']}: "
+                        f"{measurement['execution']['failure']}"
+                    )
 
             completed, failed = _recount(
                 experiment_dir,
@@ -1134,43 +1449,29 @@ def execute_http3_schedule(
                 failed=failed,
             )
 
-            if not measurement["execution"]["valid"]:
-                transition(
-                    experiment_dir,
-                    "FAILED",
-                    failure={
-                        "stage": "running",
-                        "message": (
-                            measurement["execution"]["failure"]
-                            or "HTTP/3 run failed"
-                        ),
-                        "run_id": run["run_id"],
-                    },
-                )
+            if completed != len(schedule["runs"]):
                 raise FrameworkError(
-                    f"HTTP/3 run failed: {run['run_id']}: "
-                    f"{measurement['execution']['failure']}"
+                    "HTTP/3 schedule ended without all runs completing"
                 )
 
-        completed, failed = _recount(
-            experiment_dir,
-            schedule,
-        )
-        update_run_counts(
-            experiment_dir,
-            completed=completed,
-            failed=failed,
-        )
-
-        if completed != len(schedule["runs"]):
-            raise FrameworkError(
-                "HTTP/3 schedule ended without all runs completing"
-            )
-
-        transition(experiment_dir, "ANALYZING")
+            transition(experiment_dir, "ANALYZING")
 
     except KeyboardInterrupt:
         current = load_state(experiment_dir)
         if current["state"] == "RUNNING":
             transition(experiment_dir, "ABORTED")
         raise
+    except Exception as exc:
+        current = load_state(experiment_dir)
+        if current["state"] == "RUNNING":
+            transition(
+                experiment_dir,
+                "FAILED",
+                failure={
+                    "stage": "running",
+                    "message": str(exc),
+                    "run_id": None,
+                },
+            )
+        raise
+

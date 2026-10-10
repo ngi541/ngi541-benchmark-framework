@@ -83,3 +83,24 @@ With 10 repetitions and two paired variants this resolves to exactly 120 schedul
 ## Runtime identity
 
 Every configured executable/shared library has an expected SHA-256. The campaign verifies it before preparation or resumed execution. The regular preparation provenance then records the same hash in the experiment.
+
+## Controlled scheduling and host readiness (R6.2)
+
+Campaign definitions can add:
+
+```json
+"scheduling": {
+  "condition_order": "rotating-rounds",
+  "variant_order": "balanced-by-condition-round"
+}
+```
+
+and a `measurement_control` object for host telemetry/readiness, host-specific
+idle calibration, runtime artifact staging/cleanup and analysis warning
+thresholds. R6.2.1 uses sustained consecutive readiness and, on Darwin, a
+persistent privileged temperature sampler. These fields are part of the
+canonical campaign-definition SHA-256, so changing the control policy creates a
+different campaign definition and cannot silently resume an older experiment.
+
+See `docs/r6.2-measurement-control.md` and
+`benchmark/configs/r6.3-local-http3-control.json`.

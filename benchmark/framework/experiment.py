@@ -26,6 +26,13 @@ from framework.campaign import (
     verify_active_framework_identity,
 )
 from framework.environment import prepare_environment
+from framework.host_state import (
+    calibrate_host_state,
+    host_state_session,
+    normalize_measurement_control,
+    validate_host_state_capabilities,
+    wait_until_ready,
+)
 from framework.ids import (
     generate_experiment_id,
     utc_rfc3339,
@@ -737,6 +744,101 @@ def command_campaign(args: argparse.Namespace) -> int:
         )
         return 130
 
+def command_host_check(args: argparse.Namespace) -> int:
+    config_path = resolve_campaign_config_path(args.config, REPO_ROOT)
+    definition, _ = load_campaign_definition(config_path, REPO_ROOT)
+    control = normalize_measurement_control(
+        definition["experiment"].get("measurement_control")
+    )
+
+    calibration_snapshots: list[dict[str, Any]] = []
+    readiness_snapshots: list[dict[str, Any]] = []
+
+    try:
+        with host_state_session(control) as host_session:
+            capabilities = validate_host_state_capabilities(
+                control, session=host_session
+            )
+            snapshot = capabilities.get("snapshot")
+            if not capabilities["passed"]:
+                calibration = None
+                result = capabilities.get("static_readiness_at_preflight") or {
+                    "ready": False,
+                    "reasons": ["host-state-capabilities-failed"],
+                    "fatal": True,
+                }
+            else:
+                calibration = calibrate_host_state(
+                    control,
+                    session=host_session,
+                    on_snapshot=calibration_snapshots.append,
+                )
+                final_snapshot, readiness_count, _ = wait_until_ready(
+                    control,
+                    calibration=calibration,
+                    session=host_session,
+                    on_snapshot=readiness_snapshots.append,
+                )
+                snapshot = final_snapshot
+                result = final_snapshot["readiness"]
+                result = dict(result)
+                result["samples"] = readiness_count
+    except FrameworkError as exc:
+        capabilities = locals().get("capabilities") or {
+            "schema_version": 2,
+            "passed": False,
+            "errors": [str(exc)],
+            "snapshot": None,
+        }
+        calibration = locals().get("calibration")
+        snapshot = capabilities.get("snapshot")
+        result = {
+            "ready": False,
+            "reasons": [str(exc)],
+            "fatal": True,
+        }
+
+    document = {
+        "schema_version": 2,
+        "config": str(config_path),
+        "capabilities": capabilities,
+        "calibration": calibration,
+        "readiness": result,
+    }
+    if args.json:
+        print(json.dumps(document, indent=2, sort_keys=True))
+    else:
+        temperature = ((snapshot or {}).get("temperature") or {}).get("temperature_c")
+        thermal = ((snapshot or {}).get("thermal") or {})
+        power = ((snapshot or {}).get("power") or {})
+        load = ((snapshot or {}).get("load") or {})
+        print(f"capabilities: {'PASS' if capabilities['passed'] else 'FAIL'}")
+        print(f"provider:     {(snapshot or {}).get('provider', 'disabled')}")
+        print(f"temperature:  {temperature if temperature is not None else 'unavailable'}")
+        print(f"power:        {power.get('source', 'unknown')}")
+        print(f"thermal:      {thermal.get('thermal_state', 'unknown')}")
+        print(f"throttling:   {thermal.get('throttling_active')}")
+        print(f"cpu-busy:     {load.get('cpu_busy_percent')}")
+        if calibration and calibration.get("enabled"):
+            busy = calibration.get("cpu_busy_percent") or {}
+            quantile = busy.get("upper_quantile")
+            q_label = int(round(float(quantile) * 100)) if isinstance(quantile, (int, float)) else None
+            print(f"calibration:  PASS ({calibration.get('samples_collected')}/{calibration.get('samples_requested')} samples)")
+            print(f"cpu-baseline: median={busy.get('median'):.1f}% q{q_label}={busy.get('upper_limit'):.1f}%")
+        elif calibration is not None:
+            print("calibration:  disabled")
+        print(f"readiness:    {'PASS' if result.get('ready') else 'BLOCKED'}")
+        streak = result.get("consecutive_ready_samples")
+        required = result.get("required_consecutive_ready_samples")
+        if streak is not None and required is not None:
+            print(f"ready-streak: {streak}/{required}")
+        if result.get("reasons"):
+            print("reasons:      " + ", ".join(result["reasons"]))
+        for error in capabilities.get("errors", []):
+            print("error:        " + error)
+    return 0 if capabilities["passed"] and result.get("ready") else 1
+
+
 def command_status(args: argparse.Namespace) -> int:
     path = ensure_experiment_exists(args.experiment_id)
     state = read_json(path / "state.json")
@@ -947,6 +1049,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="create a new campaign instance even if a matching one exists",
     )
     campaign.set_defaults(func=command_campaign)
+
+    host_check = subparsers.add_parser(
+        "host-check",
+        help="inspect measurement-control host telemetry and readiness",
+    )
+    host_check.add_argument(
+        "--config",
+        required=True,
+        help="campaign JSON whose measurement-control policy should be checked",
+    )
+    host_check.add_argument("--json", action="store_true")
+    host_check.set_defaults(func=command_host_check)
 
     status = subparsers.add_parser(
         "status",

@@ -13,6 +13,7 @@ from framework.ids import (
     SLUG_RE,
 )
 from framework.io_utils import FrameworkError, read_json
+from framework.host_state import normalize_measurement_control
 
 
 COMMON_DIRS = (
@@ -61,6 +62,18 @@ def validate_request(request: dict[str, Any]) -> None:
 
     if not isinstance(request["parameters"], dict):
         raise FrameworkError("parameters must be an object")
+
+    scheduling = request.get("scheduling")
+    if scheduling is not None:
+        if not isinstance(scheduling, dict):
+            raise FrameworkError("scheduling must be an object")
+        if scheduling.get("condition_order", "condition-major") not in {"condition-major", "rotating-rounds"}:
+            raise FrameworkError("unsupported scheduling.condition_order")
+        if scheduling.get("variant_order", "pair-sequence") not in {"pair-sequence", "alternate-by-repetition", "balanced-by-condition-round"}:
+            raise FrameworkError("unsupported scheduling.variant_order")
+
+    if request.get("measurement_control") is not None:
+        normalize_measurement_control(request["measurement_control"])
 
     conditions = request.get("conditions")
     if conditions is not None:
@@ -264,6 +277,32 @@ def validate_experiment(experiment_dir: Path) -> list[str]:
                 errors.append(str(exc))
 
     if state and state.get("state") in {"ANALYZING", "COMPLETE"}:
+        try:
+            resolved = read_json(experiment_dir / "config" / "resolved.json")
+            control = normalize_measurement_control(resolved.get("measurement_control"))
+            if control["host_state"]["enabled"]:
+                if not (experiment_dir / "raw" / "host-state.jsonl").is_file():
+                    errors.append("controlled execution missing raw/host-state.jsonl")
+            if control["calibration"]["enabled"]:
+                calibration_files = sorted(
+                    (experiment_dir / "raw" / "host-calibration").glob("session-*.json")
+                )
+                if not calibration_files:
+                    errors.append("controlled execution missing host calibration record")
+                else:
+                    for calibration_path in calibration_files:
+                        try:
+                            calibration = read_json(calibration_path)
+                            cpu = calibration.get("cpu_busy_percent") or {}
+                            if not isinstance(cpu.get("upper_limit"), (int, float)):
+                                errors.append(
+                                    f"invalid host calibration envelope: {calibration_path.name}"
+                                )
+                        except FrameworkError as exc:
+                            errors.append(str(exc))
+        except FrameworkError as exc:
+            errors.append(str(exc))
+
         schedule = None
         try:
             schedule = read_json(

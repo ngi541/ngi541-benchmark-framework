@@ -110,6 +110,61 @@ class ExplicitConditionTests(unittest.TestCase):
             resolve_http3_config(request, common)
 
 
+
+
+class ControlledScheduleTests(unittest.TestCase):
+    def _resolved(self):
+        request = {
+            "workload": "http3",
+            "environment": "local",
+            "variants": ["stock", "ngi541-direct"],
+            "parameters": {
+                "repetitions": 4,
+                "requests_per_client": 100,
+                "warmup_requests_per_client": 5,
+            },
+            "conditions": [
+                {"payload_bytes": 16384, "workers": 1, "clients": 1},
+                {"payload_bytes": 16384, "workers": 2, "clients": 16},
+                {"payload_bytes": 16384, "workers": 4, "clients": 32},
+            ],
+            "comparison": {"mode": "paired-balanced"},
+            "scheduling": {
+                "condition_order": "rotating-rounds",
+                "variant_order": "balanced-by-condition-round",
+            },
+        }
+        resolved = resolve_common_request(request)
+        return resolve_http3_config(request, resolved)
+
+    def test_rotating_rounds_are_deterministic(self):
+        schedule = build_schedule(
+            "http3-local-20261010T050000Z-aabbcc",
+            self._resolved(),
+        )
+        self.assertEqual(len(schedule["runs"]), 24)
+        pairs = [schedule["runs"][i] for i in range(0, 24, 2)]
+        rounds = {}
+        for run in pairs:
+            rounds.setdefault(run["repetition_round"], []).append(run["condition_id"])
+        self.assertEqual(rounds[1], ["condition-0001", "condition-0002", "condition-0003"])
+        self.assertEqual(rounds[2], ["condition-0002", "condition-0003", "condition-0001"])
+        self.assertEqual(rounds[3], ["condition-0003", "condition-0001", "condition-0002"])
+        self.assertEqual(rounds[4], ["condition-0001", "condition-0002", "condition-0003"])
+
+    def test_each_condition_gets_two_ab_and_two_ba_pairs(self):
+        schedule = build_schedule(
+            "http3-local-20261010T050000Z-aabbcc",
+            self._resolved(),
+        )
+        first_by_condition = {}
+        for i in range(0, len(schedule["runs"]), 2):
+            run = schedule["runs"][i]
+            first_by_condition.setdefault(run["condition_id"], []).append(run["variant"])
+        for values in first_by_condition.values():
+            self.assertEqual(values.count("stock"), 2)
+            self.assertEqual(values.count("ngi541-direct"), 2)
+
 class CampaignIdentityTests(unittest.TestCase):
     def test_definition_hash_is_semantic_and_deterministic(self):
         one = {"b": 2, "a": {"y": 2, "x": 1}}

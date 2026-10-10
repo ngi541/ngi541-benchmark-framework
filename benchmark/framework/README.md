@@ -141,3 +141,25 @@ A versioned campaign definition can drive the complete experiment lifecycle:
 The command creates or resumes the matching experiment and advances only through legal lifecycle transitions: plan, prepare, seal, validate, execute, validate, analyze. The campaign definition is snapshotted into `config/campaign.json` and identified by a canonical SHA-256.
 
 Explicit `experiment.conditions` are ordered exact conditions and are not expanded as a Cartesian matrix. See `docs/campaigns.md`.
+
+## R6.2 measurement controls
+
+Config-driven campaigns may opt into `experiment.scheduling` and
+`experiment.measurement_control`.
+
+`condition_order=rotating-rounds` executes explicit conditions in deterministic
+repetition rounds. `variant_order=balanced-by-condition-round` keeps AB/BA
+balanced per condition while offsetting A/B order across conditions in the same
+round.
+
+When host-state control is enabled, execution records normalized temperature,
+thermal/throttling state, power source and CPU pressure. R6.2.1 does not use a
+framework-wide temperature or CPU-busy threshold: CPU readiness is derived from
+a per-execution idle calibration, and a variant starts only after the configured
+number of consecutive acceptable samples. On Darwin, required temperature uses
+one persistent privileged `powermetrics` sampler for the execution session, so
+long campaigns do not depend on sudo credential-cache lifetime.
+
+`runtime.stage_artifacts_once` removes the previous O(runs × binary-size)
+runtime duplication. `runtime.cleanup_attempt_runtime` removes transient runtime
+directories after raw evidence has been persisted.

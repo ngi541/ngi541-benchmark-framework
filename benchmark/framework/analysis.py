@@ -6,11 +6,13 @@ import io
 import json
 import math
 import statistics
+from datetime import datetime, timezone
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 from xml.sax.saxutils import escape
 
+from framework.host_state import normalize_measurement_control
 from framework.io_utils import (
     FrameworkError,
     atomic_write_json,
@@ -268,6 +270,8 @@ def _normalize_runs(
         )
         selections.append(selection)
         metric = float(measurement["metrics"][PRIMARY_METRIC])
+        timing = measurement.get("timing") or {}
+        phases = measurement.get("phases") or {}
         row: dict[str, Any] = {
             "experiment_id": experiment_dir.name,
             "sequence": run["sequence"],
@@ -275,17 +279,28 @@ def _normalize_runs(
             "pair_id": run.get("pair_id"),
             "variant": run["variant"],
             "repetition": run.get("repetition"),
+            "repetition_round": run.get("repetition_round", run.get("repetition")),
+            "condition_id": run.get("condition_id"),
+            "condition_position_in_round": run.get("condition_position_in_round"),
+            "pair_position": run.get("pair_position"),
+            "pair_order": run.get("pair_order"),
             "attempt": measurement["attempt"],
+            "attempt_started_at": timing.get("attempt_started_at")
+                or measurement.get("observations", {}).get("attempt_started_at"),
+            "measured_started_at": timing.get("started_at"),
+            "measured_finished_at": timing.get("finished_at"),
+            "attempt_elapsed_ns": timing.get("attempt_elapsed_ns"),
             "planned_requests": measurement["requests"]["planned"],
             "completed_requests": measurement["requests"]["completed"],
-            "elapsed_ns": measurement["timing"]["elapsed_ns"],
+            "elapsed_ns": timing["elapsed_ns"],
             PRIMARY_METRIC: metric,
         }
+        for phase_name, elapsed in sorted(phases.items()):
+            row[f"phase_{phase_name}"] = elapsed
         row.update(run.get("parameters") or {})
         rows.append(row)
 
     return rows, selections
-
 
 def _build_variant_summary(
     rows: list[dict[str, Any]],
@@ -326,6 +341,15 @@ def _build_variant_summary(
     return csv_rows, json_conditions
 
 
+def _parse_rfc3339(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def _build_pairs(
     rows: list[dict[str, Any]],
     schedule: dict[str, Any],
@@ -347,6 +371,12 @@ def _build_pairs(
     pair_rows: list[dict[str, Any]] = []
     by_condition: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
+    earliest = None
+    for row in rows:
+        dt = _parse_rfc3339(row.get("attempt_started_at"))
+        if dt is not None and (earliest is None or dt < earliest):
+            earliest = dt
+
     for pair_id in sorted(by_pair):
         pair = by_pair[pair_id]
         if set(pair) != {baseline, candidate}:
@@ -366,6 +396,10 @@ def _build_pairs(
         if key not in condition_catalog:
             raise FrameworkError(f"pair {pair_id} has unknown condition")
 
+        first_row, second_row = sorted(
+            (base_row, cand_row),
+            key=lambda row: int(row["sequence"]),
+        )
         baseline_value = float(base_row[PRIMARY_METRIC])
         candidate_value = float(cand_row[PRIMARY_METRIC])
         if baseline_value <= 0:
@@ -378,11 +412,25 @@ def _build_pairs(
         elif delta < 0:
             winner = "baseline"
 
+        pair_started = _parse_rfc3339(first_row.get("attempt_started_at"))
+        pair_finished = _parse_rfc3339(second_row.get("measured_finished_at"))
+        elapsed_from_start = None
+        if pair_started is not None and earliest is not None:
+            elapsed_from_start = (pair_started - earliest).total_seconds()
+
         result = {
             "condition_id": condition_catalog[key]["condition_id"],
             **base_params,
             "pair_id": pair_id,
             "repetition": base_row.get("repetition"),
+            "repetition_round": base_row.get("repetition_round"),
+            "condition_position_in_round": base_row.get("condition_position_in_round"),
+            "first_sequence": first_row["sequence"],
+            "first_variant": first_row["variant"],
+            "second_variant": second_row["variant"],
+            "pair_started_at": first_row.get("attempt_started_at"),
+            "pair_finished_at": second_row.get("measured_finished_at"),
+            "elapsed_since_campaign_start_seconds": elapsed_from_start,
             "baseline_variant": baseline,
             "candidate_variant": candidate,
             "baseline_requests_per_second": baseline_value,
@@ -405,6 +453,166 @@ def _build_pairs(
         }
     return pair_rows, paired_json
 
+
+def _order_effect_statistics(
+    pair_rows: list[dict[str, Any]],
+    *,
+    warning_pp: float,
+    strong_warning_pp: float,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in pair_rows:
+        grouped[row["condition_id"]].append(row)
+
+    csv_rows: list[dict[str, Any]] = []
+    summary: dict[str, Any] = {}
+    for condition_id in sorted(grouped):
+        rows = grouped[condition_id]
+        first_groups: dict[str, list[float]] = defaultdict(list)
+        for row in rows:
+            first_groups[row["first_variant"]].append(float(row["delta_percent"]))
+
+        group_summary: dict[str, Any] = {}
+        for variant, values in sorted(first_groups.items()):
+            group_summary[variant] = {
+                "n": len(values),
+                "mean_delta_percent": statistics.fmean(values),
+                "median_delta_percent": statistics.median(values),
+            }
+
+        variants = sorted(first_groups)
+        signed_gap = None
+        absolute_gap = None
+        if len(variants) == 2:
+            signed_gap = (
+                group_summary[variants[0]]["median_delta_percent"]
+                - group_summary[variants[1]]["median_delta_percent"]
+            )
+            absolute_gap = abs(signed_gap)
+
+        level = "unavailable"
+        if absolute_gap is not None:
+            if absolute_gap >= strong_warning_pp:
+                level = "strongly-order-sensitive"
+            elif absolute_gap >= warning_pp:
+                level = "order-sensitive"
+            else:
+                level = "stable"
+
+        summary[condition_id] = {
+            "first_variant_groups": group_summary,
+            "median_gap_percentage_points": signed_gap,
+            "absolute_median_gap_percentage_points": absolute_gap,
+            "warning_level": level,
+            "warning_threshold_pp": warning_pp,
+            "strong_warning_threshold_pp": strong_warning_pp,
+        }
+        csv_rows.append({
+            "condition_id": condition_id,
+            "first_variant_a": variants[0] if len(variants) >= 1 else None,
+            "first_variant_a_n": group_summary.get(variants[0], {}).get("n") if variants else None,
+            "first_variant_a_median_delta_percent": group_summary.get(variants[0], {}).get("median_delta_percent") if variants else None,
+            "first_variant_b": variants[1] if len(variants) >= 2 else None,
+            "first_variant_b_n": group_summary.get(variants[1], {}).get("n") if len(variants) >= 2 else None,
+            "first_variant_b_median_delta_percent": group_summary.get(variants[1], {}).get("median_delta_percent") if len(variants) >= 2 else None,
+            "median_gap_percentage_points": signed_gap,
+            "absolute_median_gap_percentage_points": absolute_gap,
+            "warning_level": level,
+        })
+    return csv_rows, summary
+
+
+def _phase_timing_summary(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    phase_names = sorted({
+        key.removeprefix("phase_")
+        for row in rows
+        for key in row
+        if key.startswith("phase_") and isinstance(row.get(key), (int, float))
+    })
+    csv_rows: list[dict[str, Any]] = []
+    summary: dict[str, Any] = {}
+    for phase in phase_names:
+        values = [
+            float(row[f"phase_{phase}"])
+            for row in rows
+            if isinstance(row.get(f"phase_{phase}"), (int, float))
+        ]
+        if not values:
+            continue
+        stats = _variant_statistics(values)
+        summary[phase] = stats
+        csv_rows.append({"phase": phase, **stats})
+    return csv_rows, summary
+
+
+def _host_calibration_rows(experiment_dir: Path) -> list[dict[str, Any]]:
+    root = experiment_dir / "raw" / "host-calibration"
+    if not root.is_dir():
+        return []
+    rows: list[dict[str, Any]] = []
+    for path in sorted(root.glob("session-*.json")):
+        record = read_json(path)
+        cpu = record.get("cpu_busy_percent") or {}
+        temp = record.get("temperature_c") or {}
+        rows.append({
+            "session_id": record.get("session_id") or path.stem,
+            "started_at": record.get("started_at"),
+            "finished_at": record.get("finished_at"),
+            "algorithm": record.get("algorithm"),
+            "samples_requested": record.get("samples_requested"),
+            "samples_collected": record.get("samples_collected"),
+            "sample_interval_seconds": record.get("sample_interval_seconds"),
+            "cpu_busy_min_percent": cpu.get("min"),
+            "cpu_busy_median_percent": cpu.get("median"),
+            "cpu_busy_mean_percent": cpu.get("mean"),
+            "cpu_busy_max_percent": cpu.get("max"),
+            "cpu_busy_upper_quantile": cpu.get("upper_quantile"),
+            "cpu_busy_upper_limit_percent": cpu.get("upper_limit"),
+            "temperature_min_c": temp.get("min"),
+            "temperature_median_c": temp.get("median"),
+            "temperature_max_c": temp.get("max"),
+        })
+    return rows
+
+
+def _host_state_rows(experiment_dir: Path) -> list[dict[str, Any]]:
+    path = experiment_dir / "raw" / "host-state.jsonl"
+    if not path.is_file():
+        return []
+    rows: list[dict[str, Any]] = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise FrameworkError(f"invalid host-state.jsonl line {line_number}") from exc
+        rows.append({
+            "captured_at": record.get("captured_at"),
+            "phase": record.get("phase"),
+            "run_id": record.get("run_id"),
+            "pair_id": record.get("pair_id"),
+            "variant": record.get("variant"),
+            "condition_id": record.get("condition_id"),
+            "repetition": record.get("repetition"),
+            "sequence": record.get("sequence"),
+            "host_calibration_id": record.get("host_calibration_id"),
+            "temperature_c": (record.get("temperature") or {}).get("temperature_c"),
+            "thermal_state": (record.get("thermal") or {}).get("thermal_state"),
+            "thermal_pressure": (record.get("thermal") or {}).get("thermal_pressure"),
+            "throttling_active": (record.get("thermal") or {}).get("throttling_active"),
+            "cpu_speed_limit_percent": (record.get("thermal") or {}).get("cpu_speed_limit_percent"),
+            "cpu_available_cpus": (record.get("thermal") or {}).get("cpu_available_cpus"),
+            "power_source": (record.get("power") or {}).get("source"),
+            "cpu_busy_percent": (record.get("load") or {}).get("cpu_busy_percent"),
+            "load_1m": (record.get("load") or {}).get("load_1m"),
+            "load_1m_per_logical_cpu": (record.get("load") or {}).get("load_1m_per_logical_cpu"),
+            "ready": (record.get("readiness") or {}).get("ready"),
+            "consecutive_ready_samples": (record.get("readiness") or {}).get("consecutive_ready_samples"),
+            "required_consecutive_ready_samples": (record.get("readiness") or {}).get("required_consecutive_ready_samples"),
+            "readiness_reasons": (record.get("readiness") or {}).get("reasons"),
+        })
+    return rows
 
 def _svg_document(width: int, height: int, body: str) -> str:
     return (
@@ -956,6 +1164,16 @@ def analyze_experiment(experiment_dir: Path) -> dict[str, Any]:
         parameter_names,
     )
 
+    control = normalize_measurement_control(resolved.get("measurement_control"))
+    order_rows, order_summary = _order_effect_statistics(
+        pair_rows,
+        warning_pp=control["analysis"]["order_effect_warning_pp"],
+        strong_warning_pp=control["analysis"]["order_effect_strong_warning_pp"],
+    )
+    phase_rows, phase_summary = _phase_timing_summary(rows)
+    host_rows = _host_state_rows(experiment_dir)
+    host_calibration_rows = _host_calibration_rows(experiment_dir)
+
     selection_doc = {
         "schema_version": ANALYSIS_SCHEMA_VERSION,
         "experiment_id": experiment_dir.name,
@@ -969,11 +1187,17 @@ def analyze_experiment(experiment_dir: Path) -> dict[str, Any]:
     }
     atomic_write_json(experiment_dir / "processed" / "selection.json", selection_doc)
 
+    phase_fields = sorted({
+        key for row in rows for key in row if key.startswith("phase_")
+    })
     run_fields = [
         "experiment_id", "sequence", "run_id", "pair_id", "variant",
-        "repetition", "attempt", *parameter_names,
+        "repetition", "repetition_round", "condition_id",
+        "condition_position_in_round", "pair_position", "pair_order",
+        "attempt", "attempt_started_at", "measured_started_at",
+        "measured_finished_at", "attempt_elapsed_ns", *parameter_names,
         "planned_requests", "completed_requests", "elapsed_ns",
-        PRIMARY_METRIC,
+        *phase_fields, PRIMARY_METRIC,
     ]
     atomic_write_text(
         experiment_dir / "processed" / "runs.csv",
@@ -992,6 +1216,9 @@ def analyze_experiment(experiment_dir: Path) -> dict[str, Any]:
 
     pair_fields = [
         "condition_id", *parameter_names, "pair_id", "repetition",
+        "repetition_round", "condition_position_in_round", "first_sequence",
+        "first_variant", "second_variant", "pair_started_at", "pair_finished_at",
+        "elapsed_since_campaign_start_seconds",
         "baseline_variant", "candidate_variant",
         "baseline_requests_per_second", "candidate_requests_per_second",
         "ratio", "delta_percent", "winner",
@@ -999,6 +1226,53 @@ def analyze_experiment(experiment_dir: Path) -> dict[str, Any]:
     atomic_write_text(
         experiment_dir / "processed" / "pairs.csv",
         _csv_text(pair_fields, pair_rows),
+    )
+
+    order_fields = [
+        "condition_id", "first_variant_a", "first_variant_a_n",
+        "first_variant_a_median_delta_percent", "first_variant_b",
+        "first_variant_b_n", "first_variant_b_median_delta_percent",
+        "median_gap_percentage_points", "absolute_median_gap_percentage_points",
+        "warning_level",
+    ]
+    atomic_write_text(
+        experiment_dir / "processed" / "order-effects.csv",
+        _csv_text(order_fields, order_rows),
+    )
+
+    phase_fields_csv = [
+        "phase", "n", "mean", "median", "min", "max",
+        "sample_standard_deviation", "coefficient_of_variation_percent",
+    ]
+    atomic_write_text(
+        experiment_dir / "processed" / "phase-timing.csv",
+        _csv_text(phase_fields_csv, phase_rows),
+    )
+
+    host_calibration_fields = [
+        "session_id", "started_at", "finished_at", "algorithm",
+        "samples_requested", "samples_collected", "sample_interval_seconds",
+        "cpu_busy_min_percent", "cpu_busy_median_percent", "cpu_busy_mean_percent",
+        "cpu_busy_max_percent", "cpu_busy_upper_quantile",
+        "cpu_busy_upper_limit_percent", "temperature_min_c",
+        "temperature_median_c", "temperature_max_c",
+    ]
+    atomic_write_text(
+        experiment_dir / "processed" / "host-calibration.csv",
+        _csv_text(host_calibration_fields, host_calibration_rows),
+    )
+
+    host_fields = [
+        "captured_at", "phase", "run_id", "pair_id", "variant",
+        "condition_id", "repetition", "sequence", "host_calibration_id", "temperature_c",
+        "thermal_state", "thermal_pressure", "throttling_active", "cpu_speed_limit_percent",
+        "cpu_available_cpus", "power_source", "cpu_busy_percent", "load_1m",
+        "load_1m_per_logical_cpu", "ready", "consecutive_ready_samples",
+        "required_consecutive_ready_samples", "readiness_reasons",
+    ]
+    atomic_write_text(
+        experiment_dir / "processed" / "host-state.csv",
+        _csv_text(host_fields, host_rows),
     )
 
     statistics_doc = {
@@ -1016,6 +1290,10 @@ def analyze_experiment(experiment_dir: Path) -> dict[str, Any]:
         },
         "conditions": variant_summary,
         "paired": paired_summary,
+        "order_effect": order_summary,
+        "phase_timing_ns": phase_summary,
+        "measurement_control": control,
+        "host_calibration": host_calibration_rows,
     }
     atomic_write_json(
         experiment_dir / "processed" / "statistics.json",
@@ -1056,6 +1334,10 @@ def analyze_experiment(experiment_dir: Path) -> dict[str, Any]:
         "processed/runs.csv",
         "processed/summary.csv",
         "processed/pairs.csv",
+        "processed/order-effects.csv",
+        "processed/phase-timing.csv",
+        "processed/host-state.csv",
+        "processed/host-calibration.csv",
         "processed/statistics.json",
         "processed/analysis-provenance.json",
         "processed/README.md",
@@ -1080,6 +1362,10 @@ def validate_analysis_outputs(experiment_dir: Path) -> list[str]:
         "processed/runs.csv",
         "processed/summary.csv",
         "processed/pairs.csv",
+        "processed/order-effects.csv",
+        "processed/phase-timing.csv",
+        "processed/host-state.csv",
+        "processed/host-calibration.csv",
         "processed/statistics.json",
         "processed/analysis-provenance.json",
         "processed/README.md",

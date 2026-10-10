@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from framework.io_utils import FrameworkError, read_json
+from framework.host_state import normalize_measurement_control
 from framework.provenance import sha256_file
 from framework.validation import validate_request
 
@@ -85,6 +86,21 @@ def _validate_campaign_definition(definition: dict[str, Any]) -> None:
         raise FrameworkError("experiment.parameters must be an object")
     if "repetitions" in parameters:
         raise FrameworkError("use experiment.repetitions, not parameters.repetitions")
+
+    scheduling = experiment.get("scheduling")
+    if scheduling is not None:
+        if not isinstance(scheduling, dict):
+            raise FrameworkError("experiment.scheduling must be an object")
+        condition_order = scheduling.get("condition_order", "condition-major")
+        variant_order = scheduling.get("variant_order", "pair-sequence")
+        if condition_order not in {"condition-major", "rotating-rounds"}:
+            raise FrameworkError("unsupported experiment.scheduling.condition_order")
+        if variant_order not in {"pair-sequence", "alternate-by-repetition", "balanced-by-condition-round"}:
+            raise FrameworkError("unsupported experiment.scheduling.variant_order")
+
+    measurement_control = experiment.get("measurement_control")
+    if measurement_control is not None:
+        normalize_measurement_control(measurement_control)
 
     conditions = experiment.get("conditions")
     if not isinstance(conditions, list) or not conditions:
@@ -206,6 +222,12 @@ def request_from_campaign(definition: dict[str, Any]) -> dict[str, Any]:
     comparison = experiment.get("comparison")
     if comparison is not None:
         request["comparison"] = dict(comparison)
+    scheduling = experiment.get("scheduling")
+    if scheduling is not None:
+        request["scheduling"] = dict(scheduling)
+    measurement_control = experiment.get("measurement_control")
+    if measurement_control is not None:
+        request["measurement_control"] = normalize_measurement_control(measurement_control)
     alias = experiment.get("alias") or definition["campaign"].get("alias")
     if alias is not None:
         request["alias"] = alias

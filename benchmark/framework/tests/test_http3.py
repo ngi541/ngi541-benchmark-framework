@@ -14,6 +14,7 @@ if str(BENCHMARK_DIR) not in sys.path:
 from framework.io_utils import FrameworkError
 from workloads.http3.adapter import (
     _nginx_config,
+    _stage_shared_artifacts,
     _write_payload,
     resolve_http3_config,
 )
@@ -151,6 +152,61 @@ class Http3ConfigTests(unittest.TestCase):
             config,
         )
         self.assertNotIn("quic reuseport", config)
+
+
+
+
+class Http3SharedArtifactTests(unittest.TestCase):
+    def test_runtime_artifacts_are_staged_once_per_variant(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            exp = root / "experiments" / "http3-local-20261010T050000Z-aabbcc"
+            exp.mkdir(parents=True)
+            build = root / "build"
+            build.mkdir()
+            stock = build / "stock-nginx"
+            direct = build / "direct-nginx"
+            library = build / "libngi541_engine.0.1.dylib"
+            stock.write_bytes(b"stock")
+            direct.write_bytes(b"direct")
+            library.write_bytes(b"library")
+
+            def record(name, path):
+                return {
+                    "name": name,
+                    "basename": path.name,
+                    "location": str(path.relative_to(root)),
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "size_bytes": path.stat().st_size,
+                }
+
+            bindings = {
+                "variants": {
+                    "stock": {"binary": record("stock", stock), "libraries": []},
+                    "ngi541-direct": {
+                        "binary": record("ngi541-direct", direct),
+                        "libraries": [record("ngi541-direct-library", library)],
+                    },
+                }
+            }
+            resolved = {
+                "variants": ["stock", "ngi541-direct"],
+                "measurement_control": {
+                    "runtime": {
+                        "stage_artifacts_once": True,
+                        "cleanup_attempt_runtime": True,
+                    }
+                },
+            }
+            manifest = _stage_shared_artifacts(exp, resolved, bindings)
+            self.assertIsNotNone(manifest)
+            self.assertTrue((exp / "execution/artifacts/stock/bin/nginx").is_file())
+            self.assertTrue((exp / "execution/artifacts/ngi541-direct/bin/nginx").is_file())
+            self.assertTrue((exp / "execution/artifacts/ngi541-direct/lib/libngi541_engine.0.1.dylib").is_file())
+            self.assertEqual(
+                len(list((exp / "execution/artifacts").rglob("nginx"))),
+                2,
+            )
 
 
 class Http3TlsPathTests(unittest.TestCase):

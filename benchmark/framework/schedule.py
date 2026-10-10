@@ -79,6 +79,28 @@ def resolve_common_request(request: dict[str, Any]) -> dict[str, Any]:
             for condition in request["conditions"]
         ]
 
+    scheduling = request.get("scheduling")
+    if scheduling is not None:
+        if not isinstance(scheduling, dict):
+            raise FrameworkError("scheduling must be an object")
+        condition_order = scheduling.get("condition_order", "condition-major")
+        variant_order = scheduling.get("variant_order", "pair-sequence")
+        if condition_order not in {"condition-major", "rotating-rounds"}:
+            raise FrameworkError(
+                f"unsupported scheduling.condition_order: {condition_order}"
+            )
+        if variant_order not in {"pair-sequence", "alternate-by-repetition", "balanced-by-condition-round"}:
+            raise FrameworkError(
+                f"unsupported scheduling.variant_order: {variant_order}"
+            )
+        resolved["scheduling"] = {
+            "condition_order": condition_order,
+            "variant_order": variant_order,
+        }
+
+    if request.get("measurement_control") is not None:
+        resolved["measurement_control"] = request["measurement_control"]
+
     return resolved
 
 
@@ -122,6 +144,10 @@ def build_schedule(
     repetitions = parameters.get("repetitions", 1)
     mode = resolved["comparison"]["mode"]
     random_seed = resolved["comparison"].get("random_seed")
+    scheduling = resolved.get("scheduling") or {
+        "condition_order": "condition-major",
+        "variant_order": "pair-sequence",
+    }
 
     explicit_conditions = resolved.get("conditions")
     if explicit_conditions is not None:
@@ -144,49 +170,88 @@ def build_schedule(
     sequence = 0
     pair_sequence = 0
 
-    for parameter_set in matrix:
-        for repetition in range(1, repetitions + 1):
-            pair_sequence += 1
+    def append_pair(
+        parameter_set: dict[str, Any],
+        condition_index: int,
+        condition_position: int,
+        repetition: int,
+    ) -> None:
+        nonlocal sequence, pair_sequence
+        pair_sequence += 1
 
-            if mode == "single":
-                order = list(variants)
-                pair_id = None
-            elif mode == "paired-balanced":
-                order = list(variants)
-                if pair_sequence % 2 == 0:
+        if mode == "single":
+            order = list(variants)
+            pair_id = None
+        elif mode == "paired-balanced":
+            order = list(variants)
+            if scheduling.get("variant_order") == "alternate-by-repetition":
+                if repetition % 2 == 0:
                     order.reverse()
-                pair_id = f"pair-{pair_sequence:04d}"
-            elif mode == "randomized":
-                order = list(variants)
-                rng.shuffle(order)
-                pair_id = (
-                    f"pair-{pair_sequence:04d}"
-                    if len(order) > 1 else None
-                )
-            else:
-                order = list(variants)
-                pair_id = (
-                    f"pair-{pair_sequence:04d}"
-                    if len(order) > 1 else None
-                )
+            elif scheduling.get("variant_order") == "balanced-by-condition-round":
+                if ((repetition - 1) + condition_index) % 2 == 1:
+                    order.reverse()
+            elif pair_sequence % 2 == 0:
+                order.reverse()
+            pair_id = f"pair-{pair_sequence:04d}"
+        elif mode == "randomized":
+            order = list(variants)
+            rng.shuffle(order)
+            pair_id = f"pair-{pair_sequence:04d}" if len(order) > 1 else None
+        else:
+            order = list(variants)
+            pair_id = f"pair-{pair_sequence:04d}" if len(order) > 1 else None
 
-            for variant in order:
-                sequence += 1
-                runs.append(
-                    {
-                        "sequence": sequence,
-                        "run_id": f"run-{sequence:04d}",
-                        "pair_id": pair_id,
-                        "variant": variant,
-                        "repetition": repetition,
-                        "parameters": dict(parameter_set),
-                    }
+        condition_id = f"condition-{condition_index + 1:04d}"
+        pair_order = "/".join(order)
+        for pair_position, variant in enumerate(order, start=1):
+            sequence += 1
+            runs.append(
+                {
+                    "sequence": sequence,
+                    "run_id": f"run-{sequence:04d}",
+                    "pair_id": pair_id,
+                    "variant": variant,
+                    "repetition": repetition,
+                    "repetition_round": repetition,
+                    "condition_id": condition_id,
+                    "condition_index": condition_index + 1,
+                    "condition_position_in_round": condition_position,
+                    "pair_position": pair_position,
+                    "pair_order": pair_order,
+                    "parameters": dict(parameter_set),
+                }
+            )
+
+    if scheduling.get("condition_order") == "rotating-rounds":
+        if not matrix:
+            raise FrameworkError("rotating-rounds requires at least one condition")
+        for repetition in range(1, repetitions + 1):
+            offset = (repetition - 1) % len(matrix)
+            indices = list(range(len(matrix)))
+            rotated = indices[offset:] + indices[:offset]
+            for position, condition_index in enumerate(rotated, start=1):
+                append_pair(
+                    matrix[condition_index],
+                    condition_index,
+                    position,
+                    repetition,
+                )
+    else:
+        for condition_index, parameter_set in enumerate(matrix):
+            for repetition in range(1, repetitions + 1):
+                append_pair(
+                    parameter_set,
+                    condition_index,
+                    condition_index + 1,
+                    repetition,
                 )
 
     return {
-        "schema_version": 1,
+        "schema_version": 2 if scheduling != {"condition_order": "condition-major", "variant_order": "pair-sequence"} else 1,
         "experiment_id": experiment_id,
         "comparison_mode": mode,
         "random_seed": random_seed if mode == "randomized" else None,
+        "scheduling": dict(scheduling),
         "runs": runs,
     }
+

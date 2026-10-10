@@ -3,47 +3,242 @@
   "$id": "https://ngi541.org/schemas/campaign.schema.json",
   "title": "NGI541 experiment campaign definition",
   "type": "object",
-  "required": ["schema_version", "campaign", "experiment", "preparation"],
+  "required": [
+    "schema_version",
+    "campaign",
+    "experiment",
+    "preparation"
+  ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {
+      "const": 1
+    },
     "campaign": {
       "type": "object",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "properties": {
-        "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
-        "alias": {"type": "string"},
-        "description": {"type": "string"}
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "alias": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
     "experiment": {
       "type": "object",
-      "required": ["workload", "environment", "variants", "repetitions", "parameters", "conditions"],
+      "required": [
+        "workload",
+        "environment",
+        "variants",
+        "repetitions",
+        "parameters",
+        "conditions"
+      ],
       "properties": {
-        "workload": {"type": "string"},
-        "environment": {"type": "string"},
-        "variants": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-        "repetitions": {"type": "integer", "minimum": 1},
-        "comparison": {"type": "object"},
-        "alias": {"type": "string"},
-        "parameters": {"type": "object"},
+        "workload": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "repetitions": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "comparison": {
+          "type": "object"
+        },
+        "alias": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "object"
+        },
         "conditions": {
           "type": "array",
           "minItems": 1,
-          "items": {"type": "object", "minProperties": 1}
+          "items": {
+            "type": "object",
+            "minProperties": 1
+          }
+        },
+        "scheduling": {
+          "type": "object",
+          "properties": {
+            "condition_order": {
+              "enum": [
+                "condition-major",
+                "rotating-rounds"
+              ]
+            },
+            "variant_order": {
+              "enum": [
+                "pair-sequence",
+                "alternate-by-repetition",
+                "balanced-by-condition-round"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "measurement_control": {
+          "type": "object",
+          "properties": {
+            "host_state": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "temperature": {
+                  "type": "object",
+                  "properties": {
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "command": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "sampler_interval_seconds": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "max_sample_age_seconds": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "sampler_start_timeout_seconds": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "require_ac_power": {
+                  "type": "boolean"
+                },
+                "require_no_throttling": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "readiness": {
+              "type": "object",
+              "properties": {
+                "timeout_seconds": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "poll_interval_seconds": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "required_consecutive_ready_samples": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false
+            },
+            "runtime": {
+              "type": "object",
+              "properties": {
+                "stage_artifacts_once": {
+                  "type": "boolean"
+                },
+                "cleanup_attempt_runtime": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "analysis": {
+              "type": "object",
+              "properties": {
+                "order_effect_warning_pp": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "order_effect_strong_warning_pp": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            "calibration": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "samples": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "sample_interval_seconds": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "cpu_busy_upper_quantile": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
     },
     "preparation": {
       "type": "object",
-      "required": ["binaries"],
+      "required": [
+        "binaries"
+      ],
       "properties": {
-        "binaries": {"type": "object", "minProperties": 1},
-        "runtime_libraries": {"type": "object"},
-        "source_requirements": {"type": "object"},
-        "sources": {"type": "array"},
-        "preflight": {"type": "array"}
+        "binaries": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "runtime_libraries": {
+          "type": "object"
+        },
+        "source_requirements": {
+          "type": "object"
+        },
+        "sources": {
+          "type": "array"
+        },
+        "preflight": {
+          "type": "array"
+        }
       },
       "additionalProperties": false
     }
