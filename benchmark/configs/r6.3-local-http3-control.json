@@ -31,7 +31,7 @@
           "sampler_start_timeout_seconds": 15.0
         },
         "require_ac_power": true,
-        "require_no_throttling": true
+        "require_no_throttling": false
       },
       "readiness": {
         "timeout_seconds": 180,

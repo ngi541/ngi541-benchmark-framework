@@ -155,7 +155,8 @@ round.
 When host-state control is enabled, execution records normalized temperature,
 thermal/throttling state, power source and CPU pressure. R6.2.1 does not use a
 framework-wide temperature or CPU-busy threshold: CPU readiness is derived from
-a per-execution idle calibration, and a variant starts only after the configured
+a per-execution consecutive-static-ready idle calibration (which waits through
+transient thermal/power constraints up to its timeout), and a variant starts only after the configured
 number of consecutive acceptable samples. On Darwin, required temperature uses
 one persistent privileged `powermetrics` sampler for the execution session, so
 long campaigns do not depend on sudo credential-cache lifetime.

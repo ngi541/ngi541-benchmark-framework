@@ -62,6 +62,14 @@ class HostStateConfigTests(unittest.TestCase):
                 }
             })
 
+    def test_invalid_calibration_timeout_is_rejected(self):
+        with self.assertRaises(FrameworkError):
+            normalize_measurement_control({
+                "calibration": {
+                    "timeout_seconds": 0,
+                }
+            })
+
     def test_invalid_order_thresholds_are_rejected(self):
         with self.assertRaises(FrameworkError):
             normalize_measurement_control({
@@ -136,6 +144,37 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(calibration["samples_collected"], 5)
         self.assertEqual(calibration["cpu_busy_percent"]["median"], 20.0)
         self.assertEqual(calibration["cpu_busy_percent"]["upper_limit"], 25.0)
+
+    def test_calibration_waits_through_transient_throttling_and_restarts_window(self):
+        first = self._snapshot(10.0)
+        blocked = self._snapshot(11.0)
+        blocked["thermal"]["throttling_active"] = True
+        stable = [self._snapshot(v) for v in (12.0, 13.0, 14.0, 15.0, 16.0)]
+        seen = []
+        with mock.patch(
+            "framework.host_state.capture_host_state",
+            side_effect=[first, blocked, *stable],
+        ):
+            calibration = calibrate_host_state(self._control(), on_snapshot=seen.append)
+
+        self.assertEqual(calibration["samples_collected"], 5)
+        self.assertEqual(calibration["snapshots_observed"], 7)
+        self.assertEqual(calibration["snapshots_rejected_static"], 1)
+        self.assertEqual(calibration["window_resets"], 1)
+        self.assertEqual(calibration["cpu_busy_percent"]["median"], 14.0)
+        self.assertEqual(len(seen), 7)
+
+    def test_calibration_times_out_instead_of_failing_immediately_on_static_block(self):
+        control = self._control()
+        control["calibration"]["timeout_seconds"] = 0.01
+        blocked = self._snapshot(10.0)
+        blocked["thermal"]["throttling_active"] = True
+        with mock.patch(
+            "framework.host_state.capture_host_state",
+            return_value=blocked,
+        ):
+            with self.assertRaisesRegex(FrameworkError, "host calibration timeout"):
+                calibrate_host_state(control)
 
 
 class ReadinessTests(unittest.TestCase):

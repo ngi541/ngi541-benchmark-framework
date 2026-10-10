@@ -207,6 +207,10 @@
                   "type": "number",
                   "exclusiveMinimum": 0,
                   "maximum": 1
+                },
+                "timeout_seconds": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
                 }
               },
               "additionalProperties": false

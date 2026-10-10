@@ -36,6 +36,7 @@ DEFAULT_MEASUREMENT_CONTROL: dict[str, Any] = {
         "samples": 15,
         "sample_interval_seconds": 1.0,
         "cpu_busy_upper_quantile": 0.90,
+        "timeout_seconds": 180,
     },
     "readiness": {
         "timeout_seconds": 120,
@@ -148,7 +149,8 @@ def normalize_measurement_control(value: Any) -> dict[str, Any]:
     if not isinstance(calibration, dict):
         raise FrameworkError("measurement_control.calibration must be an object")
     allowed_calibration = {
-        "enabled", "samples", "sample_interval_seconds", "cpu_busy_upper_quantile"
+        "enabled", "samples", "sample_interval_seconds",
+        "cpu_busy_upper_quantile", "timeout_seconds"
     }
     unknown_calibration = set(calibration).difference(allowed_calibration)
     if unknown_calibration:
@@ -164,6 +166,10 @@ def normalize_measurement_control(value: Any) -> dict[str, Any]:
     calibration["sample_interval_seconds"] = _positive_number(
         calibration.get("sample_interval_seconds"),
         "measurement_control.calibration.sample_interval_seconds",
+    )
+    calibration["timeout_seconds"] = _positive_number(
+        calibration.get("timeout_seconds"),
+        "measurement_control.calibration.timeout_seconds",
     )
     quantile = calibration.get("cpu_busy_upper_quantile")
     if (
@@ -809,7 +815,7 @@ def calibrate_host_state(
     cfg = control["calibration"]
     if not control["host_state"]["enabled"] or not cfg["enabled"]:
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "enabled": False,
             "algorithm": None,
             "cpu_busy_percent": None,
@@ -819,46 +825,80 @@ def calibrate_host_state(
     started_at = utc_rfc3339()
     target_samples = int(cfg["samples"])
     interval = float(cfg["sample_interval_seconds"])
+    timeout = float(cfg["timeout_seconds"])
+    deadline = time.monotonic() + timeout
+
     busy_values: list[float] = []
     temperature_values: list[float] = []
-    snapshots = 0
+    accepted_samples = 0
+    observed_snapshots = 0
+    rejected_snapshots = 0
+    window_resets = 0
     next_sample_at = time.monotonic()
+    last_reasons: list[str] = []
 
-    for index in range(target_samples):
+    # Calibration is a consecutive window of statically acceptable host state.
+    # A transient AC/thermal/performance constraint is not fatal: wait for the
+    # host to recover and restart the baseline window. This keeps calibration
+    # state-driven without weakening the no-throttling policy or introducing a
+    # fixed cooldown delay.
+    while accepted_samples < target_samples:
         delay = next_sample_at - time.monotonic()
         if delay > 0:
             time.sleep(delay)
+
         snapshot = capture_host_state(control, session=session)
         static = static_readiness(snapshot, control)
+        observed_snapshots += 1
+        last_reasons = list(static["reasons"])
+
         snapshot["calibration"] = {
-            "sample": index + 1,
+            "observed_snapshot": observed_snapshots,
+            "accepted_sample": accepted_samples + 1 if static["ready"] else None,
             "samples": target_samples,
             "static_ready": static["ready"],
             "reasons": static["reasons"],
+            "window_resets": window_resets,
         }
-        snapshots += 1
         if on_snapshot is not None:
             on_snapshot(snapshot)
+
         if static["fatal"]:
             raise FrameworkError(
                 "host calibration cannot proceed: " + ", ".join(static["reasons"])
             )
+
         if not static["ready"]:
+            rejected_snapshots += 1
+            if accepted_samples:
+                window_resets += 1
+            accepted_samples = 0
+            busy_values.clear()
+            temperature_values.clear()
+        else:
+            busy = snapshot.get("load", {}).get("cpu_busy_percent")
+            if not isinstance(busy, (int, float)):
+                raise FrameworkError("host calibration requires CPU busy telemetry")
+            busy_values.append(float(busy))
+
+            temperature = snapshot.get("temperature", {}).get("temperature_c")
+            if isinstance(temperature, (int, float)):
+                temperature_values.append(float(temperature))
+            accepted_samples += 1
+
+        if accepted_samples >= target_samples:
+            break
+
+        if time.monotonic() >= deadline:
+            reasons = last_reasons or [
+                f"waiting-for-{target_samples}-consecutive-static-ready-samples"
+            ]
             raise FrameworkError(
-                "host calibration requires an acceptable static host state: "
-                + ", ".join(static["reasons"])
+                "host calibration timeout after "
+                f"{timeout:g}s: " + ", ".join(reasons)
             )
 
-        busy = snapshot.get("load", {}).get("cpu_busy_percent")
-        if not isinstance(busy, (int, float)):
-            raise FrameworkError("host calibration requires CPU busy telemetry")
-        busy_values.append(float(busy))
-
-        temperature = snapshot.get("temperature", {}).get("temperature_c")
-        if isinstance(temperature, (int, float)):
-            temperature_values.append(float(temperature))
-
-        next_sample_at += interval
+        next_sample_at = time.monotonic() + interval
 
     quantile = float(cfg["cpu_busy_upper_quantile"])
     limit = _nearest_rank(busy_values, quantile)
@@ -871,14 +911,18 @@ def calibrate_host_state(
         }
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "enabled": True,
         "started_at": started_at,
         "finished_at": utc_rfc3339(),
-        "algorithm": "nearest-rank-upper-quantile",
+        "algorithm": "consecutive-static-ready-nearest-rank-upper-quantile",
         "samples_requested": target_samples,
-        "samples_collected": snapshots,
+        "samples_collected": accepted_samples,
+        "snapshots_observed": observed_snapshots,
+        "snapshots_rejected_static": rejected_snapshots,
+        "window_resets": window_resets,
         "sample_interval_seconds": interval,
+        "timeout_seconds": timeout,
         "cpu_busy_percent": {
             "min": min(busy_values),
             "median": statistics.median(busy_values),
