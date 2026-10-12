@@ -53,6 +53,14 @@ from framework.lifecycle import (
     update_run_counts,
 )
 from framework.manifest import build_manifest
+from framework.network_qualification import (
+    load_network_qualification_definition,
+    run_network_qualification,
+)
+from framework.loadgen_runtime import (
+    load_definition as load_loadgen_runtime_definition,
+    run_loadgen_runtime,
+)
 from framework.provenance import (
     discover_dependencies,
     discover_sources,
@@ -839,6 +847,111 @@ def command_host_check(args: argparse.Namespace) -> int:
     return 0 if capabilities["passed"] and result.get("ready") else 1
 
 
+
+def command_network_qualify(args: argparse.Namespace) -> int:
+    config_path = Path(args.config).expanduser()
+    if not config_path.is_absolute():
+        cwd_candidate = (Path.cwd() / config_path).resolve()
+        repo_candidate = (REPO_ROOT / config_path).resolve()
+        config_path = cwd_candidate if cwd_candidate.is_file() else repo_candidate
+    else:
+        config_path = config_path.resolve()
+
+    definition = load_network_qualification_definition(config_path)
+    output_root = REPO_ROOT / "qualifications" / "network"
+    result = run_network_qualification(
+        definition,
+        config_path=config_path,
+        output_root=output_root,
+        repo_root=REPO_ROOT,
+        bootstrap=args.bootstrap,
+    )
+    summary = result["summary"]
+    topo = summary["topology"]
+    refs = summary["references"]
+
+    if args.json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        return 0
+
+    print(f"network-qualification: {summary['qualification_id']}")
+    print(f"topology:              {topo['classification']}")
+    print(
+        "local:                 "
+        f"{topo['local'].get('address')} via {topo['local'].get('interface')} "
+        f"({topo['local'].get('hardware_port') or 'unknown'})"
+    )
+    print(
+        "remote:                "
+        f"{topo['remote'].get('address')} via {topo['remote'].get('interface')} "
+        f"({topo['remote'].get('speed_mbps') or 'unknown'} Mb/s)"
+    )
+    if summary['ping'].get('enabled'):
+        print(
+            "ping local->remote:  "
+            f"avg={summary['ping']['local_to_remote'].get('rtt_avg_ms')} ms "
+            f"loss={summary['ping']['local_to_remote'].get('packet_loss_percent')}%"
+        )
+        print(
+            "ping remote->local:  "
+            f"avg={summary['ping']['remote_to_local'].get('rtt_avg_ms')} ms "
+            f"loss={summary['ping']['remote_to_local'].get('packet_loss_percent')}%"
+        )
+    print(
+        "tcp local->remote:      "
+        f"{refs['tcp']['local-to-remote'].get('best_throughput_mbps')} Mb/s"
+    )
+    print(
+        "tcp remote->local:      "
+        f"{refs['tcp']['remote-to-local'].get('best_throughput_mbps')} Mb/s"
+    )
+    print(
+        "udp local->remote ref:  "
+        f"{refs['udp']['local-to-remote'].get('highest_requested_mbps')} Mb/s"
+    )
+    print(
+        "udp remote->local ref:  "
+        f"{refs['udp']['remote-to-local'].get('highest_requested_mbps')} Mb/s"
+    )
+    print("status:                 COMPLETE")
+    print(f"results:                {result['root'].relative_to(REPO_ROOT)}/processed/summary.json")
+    return 0
+
+def command_loadgen_runtime(args: argparse.Namespace) -> int:
+    config_path = Path(args.config).expanduser()
+    if not config_path.is_absolute():
+        cwd_candidate = (Path.cwd() / config_path).resolve()
+        repo_candidate = (REPO_ROOT / config_path).resolve()
+        config_path = cwd_candidate if cwd_candidate.is_file() else repo_candidate
+    else:
+        config_path = config_path.resolve()
+
+    definition = load_loadgen_runtime_definition(config_path)
+    output_root = REPO_ROOT / "qualifications" / "loadgen-runtime"
+    result = run_loadgen_runtime(
+        definition,
+        config_path=config_path,
+        output_root=output_root,
+        bootstrap=args.bootstrap,
+    )
+    summary = result["summary"]
+    runtime = summary["runtime"]
+
+    if args.json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        return 0
+
+    print(f"loadgen-runtime: {summary['runtime_id']}")
+    print(f"remote:          {summary['remote']['ssh_target']}")
+    print(f"architecture:    {summary['remote']['architecture']}")
+    print(f"curl:            {runtime['curl_binary']}")
+    print(f"curl-sha256:     {runtime['curl_sha256']}")
+    print(f"http3:           {'PASS' if runtime['http3_capable'] else 'FAIL'}")
+    print("status:          COMPLETE")
+    print(f"results:         {result['root'].relative_to(REPO_ROOT)}/processed/summary.json")
+    return 0
+
+
 def command_status(args: argparse.Namespace) -> int:
     path = ensure_experiment_exists(args.experiment_id)
     state = read_json(path / "state.json")
@@ -1061,6 +1174,41 @@ def build_parser() -> argparse.ArgumentParser:
     )
     host_check.add_argument("--json", action="store_true")
     host_check.set_defaults(func=command_host_check)
+
+
+    network_qualify = subparsers.add_parser(
+        "network-qualify",
+        help="qualify a local/remote network path with ping and iperf3",
+    )
+    network_qualify.add_argument(
+        "--config",
+        required=True,
+        help="versioned network qualification JSON definition",
+    )
+    network_qualify.add_argument(
+        "--bootstrap",
+        action="store_true",
+        help="install missing iperf3 dependencies on supported endpoints",
+    )
+    network_qualify.add_argument("--json", action="store_true")
+    network_qualify.set_defaults(func=command_network_qualify)
+
+    loadgen_runtime = subparsers.add_parser(
+        "loadgen-runtime",
+        help="provision and qualify a pinned HTTP/3 curl runtime on a remote load generator",
+    )
+    loadgen_runtime.add_argument(
+        "--config",
+        required=True,
+        help="versioned load-generator runtime JSON definition",
+    )
+    loadgen_runtime.add_argument(
+        "--bootstrap",
+        action="store_true",
+        help="install missing build dependencies on the supported remote host",
+    )
+    loadgen_runtime.add_argument("--json", action="store_true")
+    loadgen_runtime.set_defaults(func=command_loadgen_runtime)
 
     status = subparsers.add_parser(
         "status",

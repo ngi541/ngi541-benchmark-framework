@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/scientific-profile.schema.json",
+  "title": "NGI541 scientific workload profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "profile_version",
+    "title",
+    "classification",
+    "scientific_basis",
+    "native_workload",
+    "object_model",
+    "content_model",
+    "supported_execution_modes"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "profile_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "profile_version": {"type": "integer", "minimum": 1},
+    "title": {"type": "string", "minLength": 1},
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["iri_pattern", "workload_kind"],
+      "properties": {
+        "iri_pattern": {"enum": ["time-sensitive", "data-integration-bulk"]},
+        "workload_kind": {
+          "enum": ["event-stream", "detector-frame-stream", "heterogeneous-object-set"]
+        }
+      }
+    },
+    "scientific_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain", "organization", "facility", "workflow", "sources"],
+      "properties": {
+        "domain": {"type": "string", "minLength": 1},
+        "organization": {"type": "string", "minLength": 1},
+        "facility": {"type": "string", "minLength": 1},
+        "workflow": {"type": "string", "minLength": 1},
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source_id", "title", "url", "supports"],
+            "properties": {
+              "source_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+              "title": {"type": "string", "minLength": 1},
+              "url": {"type": "string", "pattern": "^https://"},
+              "supports": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "string", "minLength": 1}
+              }
+            }
+          }
+        }
+      }
+    },
+    "native_workload": {"type": "object"},
+    "object_model": {"type": "object"},
+    "content_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "generator", "seed_namespace", "compressibility_policy"],
+      "properties": {
+        "kind": {"const": "deterministic-surrogate"},
+        "generator": {"const": "splitmix64"},
+        "seed_namespace": {"type": "string", "minLength": 1},
+        "compressibility_policy": {"const": "pseudo-random-uncompressed"}
+      }
+    },
+    "supported_execution_modes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["service-envelope", "transport-capacity"]}
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "classification": {
+            "properties": {"workload_kind": {"const": "event-stream"}},
+            "required": ["workload_kind"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "native_workload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["event_rate_hz", "data_rate_Bps", "representative_event_bytes", "unit_convention"],
+            "properties": {
+              "event_rate_hz": {"$ref": "#/$defs/minMaxPositive"},
+              "data_rate_Bps": {"$ref": "#/$defs/minMaxPositive"},
+              "representative_event_bytes": {"type": "integer", "minimum": 1},
+              "unit_convention": {"type": "string", "minLength": 1}
+            }
+          },
+          "object_model": {"$ref": "#/$defs/fixedRepresentative"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "classification": {
+            "properties": {"workload_kind": {"const": "detector-frame-stream"}},
+            "required": ["workload_kind"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "native_workload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["frame_bytes", "frame_rate_hz", "data_rate_Bps", "unit_convention"],
+            "properties": {
+              "frame_bytes": {"type": "integer", "minimum": 1},
+              "frame_rate_hz": {"type": "number", "exclusiveMinimum": 0},
+              "data_rate_Bps": {"type": "number", "exclusiveMinimum": 0},
+              "unit_convention": {"type": "string", "minLength": 1}
+            }
+          },
+          "object_model": {"$ref": "#/$defs/fixed"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "classification": {
+            "properties": {"workload_kind": {"const": "heterogeneous-object-set"}},
+            "required": ["workload_kind"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "native_workload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["dataset_semantics", "dataset_total_objects", "dataset_total_bytes"],
+            "properties": {
+              "dataset_semantics": {"const": "finite-multifile-transfer"},
+              "dataset_total_objects": {"type": "integer", "minimum": 1},
+              "dataset_total_bytes": {"type": "integer", "minimum": 1}
+            }
+          },
+          "object_model": {"$ref": "#/$defs/publishedHistogram"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "minMaxPositive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": {"type": "number", "exclusiveMinimum": 0},
+        "max": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "fixedRepresentative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "semantic_unit", "bytes", "derivation"],
+      "properties": {
+        "kind": {"const": "fixed-representative"},
+        "semantic_unit": {"const": "event"},
+        "bytes": {"type": "integer", "minimum": 1},
+        "derivation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "explanation"],
+          "properties": {
+            "kind": {"const": "published-rate-derived-representative"},
+            "explanation": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "fixed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "semantic_unit", "bytes"],
+      "properties": {
+        "kind": {"const": "fixed"},
+        "semantic_unit": {"const": "detector-frame"},
+        "bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "publishedHistogram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "logical_total_objects",
+        "logical_total_bytes",
+        "directories",
+        "smallest_object_bytes",
+        "largest_object_bytes",
+        "bucket_semantics",
+        "normalization",
+        "buckets"
+      ],
+      "properties": {
+        "kind": {"const": "published-histogram"},
+        "logical_total_objects": {"type": "integer", "minimum": 1},
+        "logical_total_bytes": {"type": "integer", "minimum": 1},
+        "directories": {"type": "integer", "minimum": 0},
+        "smallest_object_bytes": {"type": "integer", "minimum": 0},
+        "largest_object_bytes": {"type": "integer", "minimum": 1},
+        "bucket_semantics": {"const": "lower-inclusive-upper-exclusive"},
+        "normalization": {"type": "string", "minLength": 1},
+        "buckets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["lower_inclusive", "upper_exclusive", "count"],
+            "properties": {
+              "lower_inclusive": {"type": "integer", "minimum": 0},
+              "upper_exclusive": {"type": "integer", "minimum": 1},
+              "count": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
+      }
+    }
+  }
+}

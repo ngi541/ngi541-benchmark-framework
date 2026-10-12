@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "profile_id": "lcls-detector-frame",
+  "profile_version": 1,
+  "title": "LCLS detector-frame scientific transport workload",
+  "classification": {
+    "iri_pattern": "time-sensitive",
+    "workload_kind": "detector-frame-stream"
+  },
+  "scientific_basis": {
+    "domain": "photon science / crystallography",
+    "organization": "SLAC National Accelerator Laboratory / ESnet / NERSC",
+    "facility": "Linac Coherent Light Source",
+    "workflow": "semi-real-time detector-frame transfer from LCLS to remote HPC analysis at NERSC",
+    "sources": [
+      {
+        "source_id": "lcls-multifacility",
+        "title": "Multi-facility Workflow Case Study",
+        "url": "https://www.es.net/science-engagement/knowledge-base/case-studies/multi-facility-workflow-case-study/",
+        "supports": [
+          "120 detector images per second",
+          "10 MB per image",
+          "1.2 GB/s native detector data rate",
+          "semi-real-time transfer from LCLS to NERSC"
+        ]
+      }
+    ]
+  },
+  "native_workload": {
+    "frame_bytes": 10000000,
+    "frame_rate_hz": 120,
+    "data_rate_Bps": 1200000000,
+    "unit_convention": "SI-decimal"
+  },
+  "object_model": {
+    "kind": "fixed",
+    "semantic_unit": "detector-frame",
+    "bytes": 10000000
+  },
+  "content_model": {
+    "kind": "deterministic-surrogate",
+    "generator": "splitmix64",
+    "seed_namespace": "ngi541-scientific-corpus-v1/lcls-detector-frame",
+    "compressibility_policy": "pseudo-random-uncompressed"
+  },
+  "supported_execution_modes": [
+    "service-envelope",
+    "transport-capacity"
+  ]
+}

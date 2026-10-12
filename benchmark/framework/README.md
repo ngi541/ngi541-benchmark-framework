@@ -164,3 +164,32 @@ long campaigns do not depend on sudo credential-cache lifetime.
 `runtime.stage_artifacts_once` removes the previous O(runs × binary-size)
 runtime duplication. `runtime.cleanup_attempt_runtime` removes transient runtime
 directories after raw evidence has been persisted.
+
+## R6.5.1 network qualification
+
+R6.5.1 introduces a framework-integrated pre-HTTP/3 network qualification:
+
+```bash
+./scripts/experiment.sh network-qualify \
+  --config benchmark/configs/r6.5.1-pi-mac-network.json \
+  --bootstrap
+```
+
+The command auto-discovers the local route/interface/address used to reach the
+remote data endpoint, inventories the remote Linux interface over SSH, then
+runs bidirectional ping, TCP iperf3 and UDP iperf3 sweeps. Raw command records,
+normalized results and SHA-256 artifact inventory are stored under
+`qualifications/network/<qualification-id>/`.
+
+`iperf3` is used only to characterize the network path. QUIC/HTTP/3 traffic is
+introduced in later R6.5 stages and is not run concurrently with iperf3.
+
+## Remote HTTP/3 load-generator runtime
+
+R6.5.2 adds `loadgen-runtime`, which provisions a pinned curl + OpenSSL + ngtcp2 + nghttp3 stack on a Linux SSH peer without replacing the system curl. Source archives are SHA-256 pinned and a matching runtime is reused by semantic definition hash.
+
+```bash
+./scripts/experiment.sh loadgen-runtime \
+  --config benchmark/configs/r6.5.2-pi-http3-loadgen.json \
+  --bootstrap
+```

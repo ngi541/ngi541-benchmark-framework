@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NGI541 HTTP/3 load-generator runtime definition",
+  "type": "object",
+  "required": ["schema_version", "runtime", "remote", "sources"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "runtime": {
+      "type": "object",
+      "required": ["name", "kind", "install_root"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "kind": {"const": "curl-http3-ngtcp2"},
+        "install_root": {"type": "string", "minLength": 1}
+      }
+    },
+    "remote": {
+      "type": "object",
+      "required": ["provider", "ssh_target"],
+      "properties": {
+        "provider": {"const": "linux-ssh"},
+        "ssh_target": {"type": "string", "minLength": 1}
+      }
+    },
+    "sources": {
+      "type": "object",
+      "required": ["openssl", "nghttp3", "ngtcp2", "curl"]
+    }
+  }
+}

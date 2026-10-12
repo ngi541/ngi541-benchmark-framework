@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "qualification": {
+    "name": "r6.5.1-pi-mac-network",
+    "description": "Network-path qualification for Raspberry Pi load generator to Mac DUT over the current mixed Ethernet/Wi-Fi LAN path.",
+    "claim_scope": "network-characterization-only"
+  },
+  "local": {
+    "role": "dut",
+    "provider": "local",
+    "data_address": "auto"
+  },
+  "remote": {
+    "role": "loadgen",
+    "provider": "linux-ssh",
+    "ssh_target": "pi@192.168.1.65",
+    "data_address": "192.168.1.65",
+    "connect_timeout_seconds": 10
+  },
+  "tests": {
+    "iperf3_port": 5201,
+    "ping": {
+      "enabled": true,
+      "count": 10,
+      "interval_seconds": 0.2
+    },
+    "tcp": {
+      "enabled": true,
+      "duration_seconds": 10,
+      "parallel_streams": [
+        1,
+        4
+      ]
+    },
+    "udp": {
+      "enabled": true,
+      "duration_seconds": 5,
+      "datagram_bytes": 1200,
+      "rates_mbps": [
+        50,
+        100,
+        250,
+        500,
+        750,
+        900
+      ]
+    }
+  },
+  "reporting": {
+    "udp_reference_max_loss_percent": 0.1
+  }
+}

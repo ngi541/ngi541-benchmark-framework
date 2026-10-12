@@ -69,3 +69,5 @@ ngi541-provider
 ```
 
 Workload-specific parameters and observations remain extensible JSON objects.
+
+- `scientific-profile.schema.json` — versioned, environment-independent scientific workload profile contract used from R6.5.3 onward.

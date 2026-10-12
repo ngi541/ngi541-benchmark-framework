@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "profile_id": "clas12-event-stream",
+  "profile_version": 1,
+  "title": "Jefferson Lab CLAS12 event-stream workload",
+  "classification": {
+    "iri_pattern": "time-sensitive",
+    "workload_kind": "event-stream"
+  },
+  "scientific_basis": {
+    "domain": "nuclear physics",
+    "organization": "Thomas Jefferson National Accelerator Facility",
+    "facility": "Jefferson Lab Hall B / CLAS12",
+    "workflow": "event-oriented detector data acquisition and remote scientific processing",
+    "sources": [
+      {
+        "source_id": "clas12-daq",
+        "title": "The CLAS12 Data Acquisition System",
+        "url": "https://misportal.jlab.org/sti/publications/16200/attachments/1557/daq.pdf",
+        "supports": [
+          "typical event rates of 15-30 kHz",
+          "typical data rates of 500-1000 MByte/s"
+        ]
+      },
+      {
+        "source_id": "clas12-event-size",
+        "title": "CLAS12 Software status - event-size optimization",
+        "url": "https://indico.jlab.org/event/294/contributions/4400/attachments/3566/4318/20181106_CLAS12_GH_v2.pdf",
+        "supports": [
+          "published CLAS12 event-size examples including 31.1 kB and 26.2 kB"
+        ]
+      },
+      {
+        "source_id": "ejfat-2024",
+        "title": "California Streamin': Jefferson Lab, ESnet Achieve Coast-to-Coast Feed of Real-Time Physics Data",
+        "url": "https://www.es.net/news-and-publications/esnet-news/2024/ejfat-jefferson-lab-esnet/",
+        "supports": [
+          "Jefferson Lab physics-data streaming to NERSC Perlmutter",
+          "100 Gbit/s proof-of-concept scientific stream"
+        ]
+      }
+    ]
+  },
+  "native_workload": {
+    "event_rate_hz": {
+      "min": 15000,
+      "max": 30000
+    },
+    "data_rate_Bps": {
+      "min": 500000000,
+      "max": 1000000000
+    },
+    "representative_event_bytes": 32768,
+    "unit_convention": "SI-decimal-data-rates"
+  },
+  "object_model": {
+    "kind": "fixed-representative",
+    "semantic_unit": "event",
+    "bytes": 32768,
+    "derivation": {
+      "kind": "published-rate-derived-representative",
+      "explanation": "32 KiB is a binary-friendly representative event-scale payload. Published CLAS12 operating points of 500 MB/s at 15 kHz and 1000 MB/s at 30 kHz imply about 33.3 kB/event, while published event-size examples vary with run conditions and optimization. The profile does not claim that every CLAS12 event is exactly 32 KiB."
+    }
+  },
+  "content_model": {
+    "kind": "deterministic-surrogate",
+    "generator": "splitmix64",
+    "seed_namespace": "ngi541-scientific-corpus-v1/clas12-event-stream",
+    "compressibility_policy": "pseudo-random-uncompressed"
+  },
+  "supported_execution_modes": [
+    "service-envelope",
+    "transport-capacity"
+  ]
+}
