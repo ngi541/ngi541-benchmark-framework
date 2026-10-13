@@ -94,3 +94,6 @@ concurrency, worker, coverage or target selection.
 - `final-freeze.schema.json` — final-freeze definition and input-selection policy.
 - `final-freeze-state.schema.json` — resumable R6.5.3h lifecycle state.
 - `final-freeze-manifest.schema.json` — immutable evidence-chain and R6.5.4 execution contract.
+
+- `paired-scientific-execution.schema.json` — R6.5.4 paired campaign definition.
+- `paired-execution-result.schema.json` — per-run R6.5.4 measurement result.

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NGI541 R6.5.4 paired scientific execution definition",
+  "type": "object",
+  "required": ["schema_version", "experiment", "inputs", "execution", "analysis"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "experiment": {"type": "object"},
+    "inputs": {"type": "object"},
+    "execution": {"type": "object"},
+    "analysis": {"type": "object"}
+  },
+  "additionalProperties": false
+}

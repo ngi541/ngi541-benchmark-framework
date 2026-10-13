@@ -337,3 +337,7 @@ from its last completed phase, and never re-resolves artifact identities after
 binary/library hashes, all prerequisite evidence IDs/hashes, and prohibits
 adaptive replanning, candidate-variant tuning, metric-dependent retry and
 metric-dependent outlier deletion in R6.5.4.
+
+## R6.5.4 paired scientific execution
+
+`paired-execution` consumes the complete R6.5.3h freeze and executes the frozen 12-condition workload plan for `stock` and `ngi541-direct` with four balanced paired repetitions per condition. No adaptive replanning, metric-dependent retry, or metric-dependent outlier deletion is permitted.

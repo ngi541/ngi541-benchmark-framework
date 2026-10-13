@@ -85,6 +85,10 @@ from framework.final_freeze import (
     load_definition as load_final_freeze_definition,
     run_final_freeze,
 )
+from framework.paired_execution import (
+    load_definition as load_paired_execution_definition,
+    run_paired_execution,
+)
 from framework.provenance import (
     discover_dependencies,
     discover_sources,
@@ -1203,6 +1207,38 @@ def command_final_freeze(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_paired_execution(args: argparse.Namespace) -> int:
+    config_path = Path(args.config).expanduser()
+    if not config_path.is_absolute():
+        cwd_candidate = (Path.cwd() / config_path).resolve()
+        repo_candidate = (REPO_ROOT / config_path).resolve()
+        config_path = cwd_candidate if cwd_candidate.is_file() else repo_candidate
+    else:
+        config_path = config_path.resolve()
+
+    definition = load_paired_execution_definition(config_path)
+    output_root = REPO_ROOT / "experiments" / "r6.5.4"
+    result = run_paired_execution(definition, repo_root=REPO_ROOT, output_root=output_root)
+    summary = result["summary"]
+    if args.json:
+        print(json.dumps(result["analysis"], indent=2, sort_keys=True))
+        return 0
+    print(f"paired-execution:        {summary['experiment_id']}")
+    print(f"final-freeze:            {summary['freeze_id']}")
+    print(f"freeze-sha256:           {summary['freeze_sha256']}")
+    print(f"workload-plan:           {summary['workload_plan_id']}")
+    print(f"conditions:              {summary['condition_count']}")
+    print(f"paired repetitions:      {summary['repetitions']}")
+    print(f"pairs:                   {summary['pair_count']}")
+    print(f"variant runs:            {summary['run_count']}")
+    print("adaptive-replanning:     prohibited")
+    print("metric-dependent-retry:  prohibited")
+    print("outlier-deletion:        none")
+    print(f"status:                  {summary['status']}")
+    print("results:                 " + str(result["root"].relative_to(REPO_ROOT) / "processed" / "paired-analysis.json"))
+    return 0
+
+
 def command_status(args: argparse.Namespace) -> int:
     path = ensure_experiment_exists(args.experiment_id)
     state = read_json(path / "state.json")
@@ -1537,6 +1573,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     final_freeze.add_argument("--json", action="store_true")
     final_freeze.set_defaults(func=command_final_freeze)
+
+    paired_execution = subparsers.add_parser(
+        "paired-execution",
+        help="execute the frozen R6.5.4 paired stock versus NGI541 scientific workload campaign",
+    )
+    paired_execution.add_argument(
+        "--config",
+        required=True,
+        help="versioned R6.5.4 paired scientific execution JSON definition",
+    )
+    paired_execution.add_argument("--json", action="store_true")
+    paired_execution.set_defaults(func=command_paired_execution)
 
     status = subparsers.add_parser(
         "status",
