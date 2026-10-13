@@ -2,29 +2,106 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "NGI541 HTTP/3 load-generator runtime definition",
   "type": "object",
-  "required": ["schema_version", "runtime", "remote", "sources"],
+  "required": [
+    "schema_version",
+    "runtime",
+    "remote",
+    "sources"
+  ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {
+      "const": 1
+    },
     "runtime": {
       "type": "object",
-      "required": ["name", "kind", "install_root"],
+      "required": [
+        "name",
+        "kind",
+        "install_root"
+      ],
       "properties": {
-        "name": {"type": "string", "minLength": 1},
-        "kind": {"const": "curl-http3-ngtcp2"},
-        "install_root": {"type": "string", "minLength": 1}
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "curl-http3-ngtcp2",
+            "curl-h2load-http3-ngtcp2"
+          ]
+        },
+        "install_root": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "remote": {
       "type": "object",
-      "required": ["provider", "ssh_target"],
+      "required": [
+        "provider",
+        "ssh_target"
+      ],
       "properties": {
-        "provider": {"const": "linux-ssh"},
-        "ssh_target": {"type": "string", "minLength": 1}
+        "provider": {
+          "const": "linux-ssh"
+        },
+        "ssh_target": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "sources": {
       "type": "object",
-      "required": ["openssl", "nghttp3", "ngtcp2", "curl"]
+      "required": [
+        "openssl",
+        "nghttp3",
+        "ngtcp2",
+        "curl"
+      ],
+      "properties": {
+        "openssl": {
+          "type": "object",
+          "required": [
+            "version",
+            "url",
+            "sha256"
+          ]
+        },
+        "nghttp3": {
+          "type": "object",
+          "required": [
+            "version",
+            "url",
+            "sha256"
+          ]
+        },
+        "ngtcp2": {
+          "type": "object",
+          "required": [
+            "version",
+            "url",
+            "sha256"
+          ]
+        },
+        "curl": {
+          "type": "object",
+          "required": [
+            "version",
+            "url",
+            "sha256"
+          ]
+        },
+        "nghttp2": {
+          "type": "object",
+          "required": [
+            "version",
+            "url",
+            "sha256"
+          ]
+        }
+      }
     }
   }
 }

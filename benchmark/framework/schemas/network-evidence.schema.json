@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/network-evidence.schema.json",
+  "title": "NGI541 R6.5.3c network evidence definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "evidence", "source", "direction", "envelope"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "claim_scope": {"type": "string", "minLength": 1}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qualification_config",
+        "minimum_observations",
+        "selected_observations",
+        "selection_policy",
+        "compatibility_policy",
+        "auto_collect_missing"
+      ],
+      "properties": {
+        "qualification_config": {"type": "string", "minLength": 1},
+        "qualification_root": {"type": "string", "minLength": 1},
+        "minimum_observations": {"type": "integer", "minimum": 3},
+        "selected_observations": {"type": "integer", "minimum": 3},
+        "selection_policy": {"const": "latest-compatible"},
+        "compatibility_policy": {"const": "strict-path-v1"},
+        "auto_collect_missing": {"type": "boolean"}
+      }
+    },
+    "direction": {"const": "dut-to-loadgen"},
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregation",
+        "udp_max_loss_percent",
+        "udp_min_achieved_requested_ratio"
+      ],
+      "properties": {
+        "aggregation": {"const": "minimum"},
+        "udp_max_loss_percent": {"type": "number", "minimum": 0},
+        "udp_min_achieved_requested_ratio": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  }
+}

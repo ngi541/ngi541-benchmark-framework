@@ -71,3 +71,8 @@ ngi541-provider
 Workload-specific parameters and observations remain extensible JSON objects.
 
 - `scientific-profile.schema.json` — versioned, environment-independent scientific workload profile contract used from R6.5.3 onward.
+- `network-evidence.schema.json` — R6.5.3c resolver policy for selecting compatible R6.5.1 observations.
+- `network-envelope.schema.json` — deterministic normalized network service-envelope artifact consumed by later transport planning.
+- `scientific-corpus.schema.json` — R6.5.3d deterministic corpus-generation definition.
+- `corpus-manifest.schema.json` — normalized indexed-stream or finite-object-set corpus manifest.
+- `coverage-manifest.schema.json` — deterministic execution coverage selection for a frozen corpus.

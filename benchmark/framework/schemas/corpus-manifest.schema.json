@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/corpus-manifest.schema.json",
+  "title": "NGI541 deterministic scientific corpus manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "corpus_kind",
+    "profile",
+    "content",
+    "coverage_modes",
+    "corpus_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "corpus_kind": {
+      "enum": ["indexed-stream", "finite-object-set"]
+    },
+    "profile": {
+      "type": "object",
+      "required": ["profile_id", "profile_version", "profile_sha256"],
+      "properties": {
+        "profile_id": {"type": "string", "minLength": 1},
+        "profile_version": {"type": "integer", "minimum": 1},
+        "profile_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "content": {
+      "type": "object",
+      "required": [
+        "generator",
+        "seed_derivation",
+        "byte_order",
+        "seed_namespace",
+        "compressibility_policy"
+      ],
+      "properties": {
+        "generator": {"const": "splitmix64-v1"},
+        "seed_derivation": {"const": "sha256-first-u64-be-v1"},
+        "byte_order": {"const": "little-endian-u64"},
+        "seed_namespace": {"type": "string", "minLength": 1},
+        "compressibility_policy": {"const": "pseudo-random-uncompressed"}
+      }
+    },
+    "coverage_modes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "corpus_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"corpus_kind": {"const": "indexed-stream"}}},
+      "then": {
+        "required": ["semantic_unit", "object_size_bytes", "logical_extent", "object_identity"]
+      }
+    },
+    {
+      "if": {"properties": {"corpus_kind": {"const": "finite-object-set"}}},
+      "then": {
+        "required": ["semantic_unit", "logical_extent", "size_model", "ordering", "objects"]
+      }
+    }
+  ]
+}

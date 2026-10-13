@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/coverage-manifest.schema.json",
+  "title": "NGI541 scientific corpus coverage selection",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "corpus_sha256",
+    "profile_id",
+    "mode",
+    "selected_object_count",
+    "selected_logical_bytes",
+    "coverage_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "corpus_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "profile_id": {"type": "string", "minLength": 1},
+    "mode": {
+      "enum": ["object-count", "full", "deterministic-stratified", "time-window"]
+    },
+    "selected_object_count": {"type": "integer", "minimum": 1},
+    "selected_logical_bytes": {"type": "integer", "minimum": 0},
+    "coverage_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

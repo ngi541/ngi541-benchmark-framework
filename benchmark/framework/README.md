@@ -193,3 +193,83 @@ R6.5.2 adds `loadgen-runtime`, which provisions a pinned curl + OpenSSL + ngtcp2
   --config benchmark/configs/r6.5.2-pi-http3-loadgen.json \
   --bootstrap
 ```
+
+
+## R6.5.3b h2load runtime
+
+`loadgen-runtime` supports `curl-h2load-http3-ngtcp2` in addition to the R6.5.2 curl-only definition. The h2load qualification gate requires HTTP/3, JSON output, timing-script and RPS capabilities while preserving explicit connection and stream controls for the future transport planner.
+
+## R6.5.3c network evidence and deterministic envelope
+
+R6.5.3c resolves a strict, immutable evidence set from completed R6.5.1
+network qualifications and derives a conservative DUT-to-loadgen service
+envelope:
+
+```bash
+./scripts/experiment.sh network-evidence \
+  --config benchmark/configs/r6.5.3c-pi-mac-network-evidence.json
+```
+
+The resolver requires at least three observations from one strict path
+fingerprint.  It never combines different topology classifications, endpoint
+addresses, interfaces, link identity/capability or HTTP/3 response directions.
+The newest compatible topology group is used, and the latest configured number
+of observations from that group is frozen into the evidence set.
+
+If the current topology has too few observations and `auto_collect_missing` is
+true, the resolver runs the referenced R6.5.1 qualification until the required
+count is reached.  Missing observations collected in one resolver invocation
+reuse one SSH ControlMaster session, so password authentication is requested
+once rather than once per observation.
+
+A UDP point is safe only when both conditions hold:
+
+```text
+observed loss <= configured maximum loss
+achieved throughput / requested throughput >= configured minimum ratio
+```
+
+The deterministic envelope is:
+
+```text
+tcp_floor = min(best directional TCP throughput per selected observation)
+udp_floor = min(safe directional UDP achieved throughput per selected observation)
+service_envelope = min(tcp_floor, udp_floor)
+```
+
+An unfavorable selected observation is never dropped because of its metric. If
+one selected observation has no UDP point satisfying the policy, derivation
+fails instead of silently replacing that observation with a more favorable run.
+
+The machine-readable result is stored at:
+
+```text
+qualifications/network-evidence/<evidence-id>/processed/network-envelope.json
+```
+
+Given the same frozen observations and policy, `network-envelope.json` is
+byte-semantically deterministic and carries its own semantic SHA-256. The
+result is an empirically qualified path envelope, not a claim of reserved or
+guaranteed bandwidth.
+
+## R6.5.3d deterministic scientific corpus
+
+R6.5.3d turns the immutable R6.5.3a scientific profiles into deterministic
+corpus manifests without making execution parameters part of scientific
+semantics:
+
+```bash
+./scripts/experiment.sh scientific-corpus \
+  --config benchmark/configs/r6.5.3d-scientific-corpus.json
+```
+
+CLAS12 and LCLS are lazy indexed streams whose per-object bytes are generated
+from stable SplitMix64 recipes. HACC is a finite 19,260-object logical corpus;
+its synthetic per-object sizes satisfy the published histogram, exact logical
+byte total and published extrema. The full 4.4 TB dataset is not materialized.
+
+HACC coverage is first-class and deterministic: `full`,
+`deterministic-stratified`, and `time-window`. Coverage selection changes only
+which logical objects are exercised; it never changes scientific object
+semantics. Results are content-addressed under `corpora/scientific/` and are
+reused only after artifact-integrity validation.

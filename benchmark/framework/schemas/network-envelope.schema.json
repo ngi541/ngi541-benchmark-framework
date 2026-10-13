@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/network-envelope.schema.json",
+  "title": "NGI541 deterministic network service envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "claim_scope",
+    "direction_semantic",
+    "direction_transport",
+    "compatibility_policy",
+    "selection_policy",
+    "aggregation",
+    "udp_policy",
+    "topology",
+    "topology_fingerprint_sha256",
+    "evidence_set_sha256",
+    "observation_count",
+    "observations",
+    "floors",
+    "service_envelope_mbps",
+    "limiting_reference",
+    "envelope_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "claim_scope": {"const": "empirically-qualified-network-service-envelope"},
+    "direction_semantic": {"const": "dut-to-loadgen"},
+    "direction_transport": {"enum": ["local-to-remote", "remote-to-local"]},
+    "compatibility_policy": {"const": "strict-path-v1"},
+    "selection_policy": {"const": "latest-compatible"},
+    "aggregation": {"const": "minimum"},
+    "udp_policy": {
+      "type": "object",
+      "required": ["max_loss_percent", "min_achieved_requested_ratio"]
+    },
+    "topology": {"type": "object"},
+    "topology_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "evidence_set_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "observation_count": {"type": "integer", "minimum": 3},
+    "observations": {"type": "array", "minItems": 3},
+    "floors": {
+      "type": "object",
+      "required": [
+        "tcp_capacity_mbps",
+        "udp_safe_requested_mbps",
+        "udp_safe_achieved_mbps"
+      ]
+    },
+    "service_envelope_mbps": {"type": "number", "exclusiveMinimum": 0},
+    "limiting_reference": {
+      "enum": ["tcp-capacity-floor", "udp-safe-achieved-floor"]
+    },
+    "envelope_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

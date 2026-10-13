@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "evidence": {
+    "name": "r6.5.3c-pi-mac-network-evidence",
+    "claim_scope": "network-envelope-derivation-only"
+  },
+  "source": {
+    "qualification_config": "benchmark/configs/r6.5.1-pi-mac-network.json",
+    "qualification_root": "qualifications/network",
+    "minimum_observations": 3,
+    "selected_observations": 3,
+    "selection_policy": "latest-compatible",
+    "compatibility_policy": "strict-path-v1",
+    "auto_collect_missing": true
+  },
+  "direction": "dut-to-loadgen",
+  "envelope": {
+    "aggregation": "minimum",
+    "udp_max_loss_percent": 0.1,
+    "udp_min_achieved_requested_ratio": 0.95
+  }
+}

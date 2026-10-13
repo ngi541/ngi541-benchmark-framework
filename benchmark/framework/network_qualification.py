@@ -11,7 +11,7 @@ import socket
 import subprocess
 import tempfile
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -903,6 +903,7 @@ def run_network_qualification(
     output_root: Path,
     repo_root: Path,
     bootstrap: bool = False,
+    ssh_session: SSHSession | None = None,
 ) -> dict[str, Any]:
     validate_network_qualification_definition(definition)
     qualification_id = generate_qualification_id(definition["qualification"]["name"])
@@ -928,7 +929,12 @@ def run_network_qualification(
 
     started_at = _utc_rfc3339()
     try:
-        with SSHSession(remote_cfg["ssh_target"], ssh_timeout) as ssh:
+        session_context = (
+            nullcontext(ssh_session)
+            if ssh_session is not None
+            else SSHSession(remote_cfg["ssh_target"], ssh_timeout)
+        )
+        with session_context as ssh:
             local_iperf = _ensure_local_iperf3(bootstrap=bootstrap)
             remote_iperf = _ensure_remote_iperf3(ssh, bootstrap=bootstrap)
 

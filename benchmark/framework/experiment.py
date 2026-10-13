@@ -57,9 +57,17 @@ from framework.network_qualification import (
     load_network_qualification_definition,
     run_network_qualification,
 )
+from framework.network_evidence import (
+    load_definition as load_network_evidence_definition,
+    run_network_evidence,
+)
 from framework.loadgen_runtime import (
     load_definition as load_loadgen_runtime_definition,
     run_loadgen_runtime,
+)
+from framework.scientific_corpus import (
+    load_definition as load_scientific_corpus_definition,
+    run_scientific_corpus,
 )
 from framework.provenance import (
     discover_dependencies,
@@ -917,6 +925,48 @@ def command_network_qualify(args: argparse.Namespace) -> int:
     print(f"results:                {result['root'].relative_to(REPO_ROOT)}/processed/summary.json")
     return 0
 
+def command_network_evidence(args: argparse.Namespace) -> int:
+    config_path = Path(args.config).expanduser()
+    if not config_path.is_absolute():
+        cwd_candidate = (Path.cwd() / config_path).resolve()
+        repo_candidate = (REPO_ROOT / config_path).resolve()
+        config_path = cwd_candidate if cwd_candidate.is_file() else repo_candidate
+    else:
+        config_path = config_path.resolve()
+
+    definition = load_network_evidence_definition(config_path)
+    output_root = REPO_ROOT / "qualifications" / "network-evidence"
+    result = run_network_evidence(
+        definition,
+        repo_root=REPO_ROOT,
+        output_root=output_root,
+        bootstrap=args.bootstrap,
+    )
+    summary = result["summary"]
+    envelope = result["envelope"]
+
+    if args.json:
+        print(json.dumps(envelope, indent=2, sort_keys=True))
+        return 0
+
+    print(f"network-evidence:       {summary['evidence_id']}")
+    print(f"observations:           {summary['selected_observations']}")
+    print(f"collected-now:          {summary['collected_observations']}")
+    print(f"topology:               {envelope['topology']['topology_classification']}")
+    print(f"direction:              {envelope['direction_transport']} (DUT -> loadgen)")
+    print(f"tcp floor:              {envelope['floors']['tcp_capacity_mbps']} Mb/s")
+    print(f"udp safe requested:     {envelope['floors']['udp_safe_requested_mbps']} Mb/s")
+    print(f"udp safe achieved:      {envelope['floors']['udp_safe_achieved_mbps']} Mb/s")
+    print(f"service envelope:       {envelope['service_envelope_mbps']} Mb/s")
+    print(f"limiting reference:     {envelope['limiting_reference']}")
+    print("status:                 COMPLETE")
+    print(
+        "results:                "
+        f"{result['root'].relative_to(REPO_ROOT)}/processed/network-envelope.json"
+    )
+    return 0
+
+
 def command_loadgen_runtime(args: argparse.Namespace) -> int:
     config_path = Path(args.config).expanduser()
     if not config_path.is_absolute():
@@ -947,8 +997,61 @@ def command_loadgen_runtime(args: argparse.Namespace) -> int:
     print(f"curl:            {runtime['curl_binary']}")
     print(f"curl-sha256:     {runtime['curl_sha256']}")
     print(f"http3:           {'PASS' if runtime['http3_capable'] else 'FAIL'}")
+    if runtime.get("h2load"):
+        h2load = runtime["h2load"]
+        print(f"h2load:          {h2load['binary']}")
+        print(f"h2load-sha256:   {h2load['sha256']}")
+        print(f"h2load-http3:    {'PASS' if h2load['http3_capable'] else 'FAIL'}")
+        print(f"h2load-json:     {'PASS' if h2load['json_output_capable'] else 'FAIL'}")
     print("status:          COMPLETE")
     print(f"results:         {result['root'].relative_to(REPO_ROOT)}/processed/summary.json")
+    return 0
+
+
+def command_scientific_corpus(args: argparse.Namespace) -> int:
+    config_path = Path(args.config).expanduser()
+    if not config_path.is_absolute():
+        cwd_candidate = (Path.cwd() / config_path).resolve()
+        repo_candidate = (REPO_ROOT / config_path).resolve()
+        config_path = cwd_candidate if cwd_candidate.is_file() else repo_candidate
+    else:
+        config_path = config_path.resolve()
+
+    definition = load_scientific_corpus_definition(config_path)
+    output_root = REPO_ROOT / "corpora" / "scientific"
+    result = run_scientific_corpus(
+        definition,
+        repo_root=REPO_ROOT,
+        output_root=output_root,
+    )
+    summary = result["summary"]
+
+    if args.json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        return 0
+
+    print(f"scientific-corpus:      {summary['corpus_id']}")
+    print(f"profiles:               {summary['profile_count']}")
+    for profile in summary["profiles"]:
+        print(
+            "profile:                "
+            f"{profile['profile_id']} v{profile['profile_version']} "
+            f"({profile['corpus_kind']})"
+        )
+    hacc = summary.get("hacc")
+    if hacc:
+        print(f"hacc logical objects:   {hacc['logical_objects']}")
+        print(f"hacc logical bytes:     {hacc['logical_bytes']}")
+        print(
+            "hacc coverage:          "
+            + ", ".join(hacc["coverage_modes"])
+        )
+    print(f"reused:                 {'yes' if result['reused'] else 'no'}")
+    print("status:                 COMPLETE")
+    print(
+        "results:                "
+        f"{result['root'].relative_to(REPO_ROOT)}/processed/summary.json"
+    )
     return 0
 
 
@@ -1193,6 +1296,23 @@ def build_parser() -> argparse.ArgumentParser:
     network_qualify.add_argument("--json", action="store_true")
     network_qualify.set_defaults(func=command_network_qualify)
 
+    network_evidence = subparsers.add_parser(
+        "network-evidence",
+        help="resolve compatible network qualifications and derive a deterministic service envelope",
+    )
+    network_evidence.add_argument(
+        "--config",
+        required=True,
+        help="versioned network-evidence JSON definition",
+    )
+    network_evidence.add_argument(
+        "--bootstrap",
+        action="store_true",
+        help="allow missing auto-collected network qualifications to bootstrap iperf3",
+    )
+    network_evidence.add_argument("--json", action="store_true")
+    network_evidence.set_defaults(func=command_network_evidence)
+
     loadgen_runtime = subparsers.add_parser(
         "loadgen-runtime",
         help="provision and qualify a pinned HTTP/3 curl runtime on a remote load generator",
@@ -1209,6 +1329,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     loadgen_runtime.add_argument("--json", action="store_true")
     loadgen_runtime.set_defaults(func=command_loadgen_runtime)
+
+    scientific_corpus = subparsers.add_parser(
+        "scientific-corpus",
+        help="generate deterministic scientific corpus manifests and coverage contracts",
+    )
+    scientific_corpus.add_argument(
+        "--config",
+        required=True,
+        help="versioned scientific corpus JSON definition",
+    )
+    scientific_corpus.add_argument("--json", action="store_true")
+    scientific_corpus.set_defaults(func=command_scientific_corpus)
 
     status = subparsers.add_parser(
         "status",

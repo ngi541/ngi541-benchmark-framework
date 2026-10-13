@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "corpus": {
+    "name": "r6.5.3d-scientific-corpus",
+    "claim_scope": "deterministic-scientific-corpus-definition-only"
+  },
+  "profile_registry": "benchmark/scientific-profiles",
+  "profiles": [
+    {
+      "profile_id": "clas12-event-stream",
+      "profile_version": 1
+    },
+    {
+      "profile_id": "lcls-detector-frame",
+      "profile_version": 1
+    },
+    {
+      "profile_id": "hacc-multifile-dataset",
+      "profile_version": 1
+    }
+  ],
+  "generator": {
+    "algorithm": "splitmix64-v1",
+    "seed_derivation": "sha256-first-u64-be-v1",
+    "byte_order": "little-endian-u64"
+  },
+  "hacc": {
+    "size_assignment": "capacity-weighted-largest-remainder-v1",
+    "ordering": "sha256-object-key-v1",
+    "coverage": {
+      "modes": [
+        "full",
+        "deterministic-stratified",
+        "time-window"
+      ],
+      "deterministic_stratified": {
+        "minimum_one_per_nonempty_bucket": true,
+        "include_published_extrema": true
+      },
+      "time_window": {
+        "selection": "ordered-prefix-through-byte-budget"
+      }
+    }
+  },
+  "materialization": {
+    "chunk_bytes": 1048576
+  }
+}
