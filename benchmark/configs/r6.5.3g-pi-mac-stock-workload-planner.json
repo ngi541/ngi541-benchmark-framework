@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "qualification": {
+    "name": "r6.5.3g-pi-mac-stock-workload-planner",
+    "claim_scope": "stock-only-workload-planning-no-performance-claim"
+  },
+  "inputs": {
+    "network_evidence_config": "benchmark/configs/r6.5.3c-pi-mac-network-evidence.json",
+    "loadgen_runtime_config": "benchmark/configs/r6.5.3b-pi-http3-loadgen.json",
+    "scientific_corpus_config": "benchmark/configs/r6.5.3d-scientific-corpus.json",
+    "transport_security_config": "benchmark/configs/r6.5.3e-pi-mac-http3-security.json",
+    "dual_host_telemetry_config": "benchmark/configs/r6.5.3f-pi-mac-dual-host-telemetry.json"
+  },
+  "planning": {
+    "calibration_variant": "stock",
+    "service_target_fractions": [0.5, 0.8],
+    "worker_points": ["single", "physical-core-count"],
+    "concurrency_candidates": [
+      {"connections": 1, "max_concurrent_streams_per_connection": 1},
+      {"connections": 1, "max_concurrent_streams_per_connection": 4},
+      {"connections": 1, "max_concurrent_streams_per_connection": 16},
+      {"connections": 1, "max_concurrent_streams_per_connection": 64},
+      {"connections": 2, "max_concurrent_streams_per_connection": 4},
+      {"connections": 2, "max_concurrent_streams_per_connection": 16},
+      {"connections": 2, "max_concurrent_streams_per_connection": 64},
+      {"connections": 4, "max_concurrent_streams_per_connection": 4},
+      {"connections": 4, "max_concurrent_streams_per_connection": 16},
+      {"connections": 4, "max_concurrent_streams_per_connection": 64},
+      {"connections": 8, "max_concurrent_streams_per_connection": 4},
+      {"connections": 8, "max_concurrent_streams_per_connection": 16},
+      {"connections": 8, "max_concurrent_streams_per_connection": 64}
+    ],
+    "probe": {
+      "warmup_seconds": 3,
+      "measurement_seconds": 10,
+      "sample_interval_seconds": 1,
+      "achieved_target_ratio_min": 0.95,
+      "loadgen_total_cpu_max_percent": 85,
+      "loadgen_core_cpu_max_percent": 95,
+      "require_no_throttling": true
+    },
+    "final_measurement": {
+      "warmup_seconds": 5,
+      "measurement_seconds": 20
+    },
+    "hacc_calibration": {
+      "selector": "deterministic-bucket-sequence",
+      "bucket_indices": [6],
+      "objects_per_bucket": 8,
+      "max_materialized_bytes": 67108864
+    }
+  }
+}

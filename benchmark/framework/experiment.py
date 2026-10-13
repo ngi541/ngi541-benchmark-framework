@@ -77,6 +77,10 @@ from framework.dual_host_telemetry import (
     load_definition as load_dual_host_telemetry_definition,
     run_dual_host_telemetry,
 )
+from framework.workload_planner import (
+    load_definition as load_workload_planner_definition,
+    run_workload_planner,
+)
 from framework.provenance import (
     discover_dependencies,
     discover_sources,
@@ -1132,6 +1136,37 @@ def command_dual_host_telemetry(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_workload_planner(args: argparse.Namespace) -> int:
+    config_path = Path(args.config).expanduser()
+    if not config_path.is_absolute():
+        cwd_candidate = (Path.cwd() / config_path).resolve()
+        repo_candidate = (REPO_ROOT / config_path).resolve()
+        config_path = cwd_candidate if cwd_candidate.is_file() else repo_candidate
+    else:
+        config_path = config_path.resolve()
+
+    definition = load_workload_planner_definition(config_path)
+    output_root = REPO_ROOT / "qualifications" / "workload-planner"
+    result = run_workload_planner(definition, repo_root=REPO_ROOT, output_root=output_root)
+    summary = result["summary"]
+    plan = result["plan"]
+
+    if args.json:
+        print(json.dumps(plan, indent=2, sort_keys=True))
+        return 0
+
+    print(f"workload-planner:       {summary['qualification_id']}")
+    print(f"workload-plan:          {summary['plan_id']}")
+    print(f"calibration-variant:    {summary['calibration_variant']}")
+    print(f"service-envelope:       {summary['service_envelope_mbps']} Mb/s")
+    print(f"conditions:             {summary['condition_count']}")
+    print(f"probes:                 {summary['probe_count']}")
+    print(f"reused:                 {'yes' if result['reused'] else 'no'}")
+    print(f"status:                 {summary['status']}")
+    print("results:                " + str(result["root"].relative_to(REPO_ROOT) / "processed" / "workload-plan.json"))
+    return 0
+
+
 def command_status(args: argparse.Namespace) -> int:
     path = ensure_experiment_exists(args.experiment_id)
     state = read_json(path / "state.json")
@@ -1442,6 +1477,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     dual_host_telemetry.add_argument("--json", action="store_true")
     dual_host_telemetry.set_defaults(func=command_dual_host_telemetry)
+
+    workload_planner = subparsers.add_parser(
+        "workload-planner",
+        help="derive and freeze a stock-only scientific HTTP/3 workload plan",
+    )
+    workload_planner.add_argument(
+        "--config",
+        required=True,
+        help="versioned stock-only workload planner JSON definition",
+    )
+    workload_planner.add_argument("--json", action="store_true")
+    workload_planner.set_defaults(func=command_workload_planner)
 
     status = subparsers.add_parser(
         "status",

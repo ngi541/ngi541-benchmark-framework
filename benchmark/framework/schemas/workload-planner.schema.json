@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/workload-planner.schema.json",
+  "title": "NGI541 R6.5.3g stock-only workload planner",
+  "type": "object",
+  "required": ["schema_version", "qualification", "inputs", "planning"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "qualification": {
+      "type": "object",
+      "required": ["name", "claim_scope"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "claim_scope": {"const": "stock-only-workload-planning-no-performance-claim"}
+      },
+      "additionalProperties": false
+    },
+    "inputs": {
+      "type": "object",
+      "required": ["network_evidence_config", "loadgen_runtime_config", "scientific_corpus_config", "transport_security_config", "dual_host_telemetry_config"],
+      "properties": {
+        "network_evidence_config": {"type": "string"},
+        "loadgen_runtime_config": {"type": "string"},
+        "scientific_corpus_config": {"type": "string"},
+        "transport_security_config": {"type": "string"},
+        "dual_host_telemetry_config": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "planning": {"type": "object"}
+  },
+  "additionalProperties": false
+}

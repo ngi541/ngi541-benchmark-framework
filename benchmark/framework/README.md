@@ -313,3 +313,10 @@ per-core frequency, temperature, Raspberry Pi firmware throttling state, process
 CPU/RSS, interface counters and UDP input errors. Raspberry Pi total watts are
 reported unavailable unless a future external current/power sensor provider is
 configured; voltage alone is never converted into watts.
+
+### R6.5.3g stock-only workload planning
+
+`workload-planner` resolves the frozen R6.5.3b–f evidence, runs adaptive
+concurrency/rate calibration against **stock only**, enforces load-generator and
+DUT telemetry headroom, and freezes `processed/workload-plan.json`. Candidate
+NGI541 code is prohibited from participating in planning.

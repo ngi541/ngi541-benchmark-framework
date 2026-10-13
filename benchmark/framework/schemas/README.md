@@ -80,3 +80,11 @@ Workload-specific parameters and observations remain extensible JSON objects.
 
 - `dual-host-telemetry.schema.json` — R6.5.3f dual-host telemetry qualification definition.
 - `telemetry-sample.schema.json` — normalized per-host telemetry sample contract.
+
+## R6.5.3g workload planning
+
+- `workload-planner.schema.json` defines the stock-only calibration policy.
+- `workload-plan.schema.json` describes the immutable derived plan consumed by later paired campaigns.
+
+The planner may tune only the stock NGINX path. NGI541 is prohibited from rate,
+concurrency, worker, coverage or target selection.
