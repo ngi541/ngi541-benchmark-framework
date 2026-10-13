@@ -320,3 +320,20 @@ configured; voltage alone is never converted into watts.
 concurrency/rate calibration against **stock only**, enforces load-generator and
 DUT telemetry headroom, and freezes `processed/workload-plan.json`. Candidate
 NGI541 code is prohibited from participating in planning.
+
+## R6.5.3h lifecycle / resume / final freeze
+
+`final-freeze` validates the complete R6.5.3 evidence chain and emits an
+immutable `processed/final-manifest.json` for R6.5.4:
+
+```bash
+./scripts/experiment.sh final-freeze \
+  --config benchmark/configs/r6.5.3h-pi-mac-final-freeze.json
+```
+
+The command persists the frozen R6.5.3 lifecycle, can resume a FAILED freeze
+from its last completed phase, and never re-resolves artifact identities after
+`INPUTS_FROZEN`.  The final manifest pins the workload-plan SHA, both variant
+binary/library hashes, all prerequisite evidence IDs/hashes, and prohibits
+adaptive replanning, candidate-variant tuning, metric-dependent retry and
+metric-dependent outlier deletion in R6.5.4.

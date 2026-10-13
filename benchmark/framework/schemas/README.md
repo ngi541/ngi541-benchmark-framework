@@ -88,3 +88,9 @@ Workload-specific parameters and observations remain extensible JSON objects.
 
 The planner may tune only the stock NGINX path. NGI541 is prohibited from rate,
 concurrency, worker, coverage or target selection.
+
+## R6.5.3h final freeze
+
+- `final-freeze.schema.json` — final-freeze definition and input-selection policy.
+- `final-freeze-state.schema.json` — resumable R6.5.3h lifecycle state.
+- `final-freeze-manifest.schema.json` — immutable evidence-chain and R6.5.4 execution contract.

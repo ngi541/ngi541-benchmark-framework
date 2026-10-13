@@ -81,6 +81,10 @@ from framework.workload_planner import (
     load_definition as load_workload_planner_definition,
     run_workload_planner,
 )
+from framework.final_freeze import (
+    load_definition as load_final_freeze_definition,
+    run_final_freeze,
+)
 from framework.provenance import (
     discover_dependencies,
     discover_sources,
@@ -1167,6 +1171,38 @@ def command_workload_planner(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_final_freeze(args: argparse.Namespace) -> int:
+    config_path = Path(args.config).expanduser()
+    if not config_path.is_absolute():
+        cwd_candidate = (Path.cwd() / config_path).resolve()
+        repo_candidate = (REPO_ROOT / config_path).resolve()
+        config_path = cwd_candidate if cwd_candidate.is_file() else repo_candidate
+    else:
+        config_path = config_path.resolve()
+
+    definition = load_final_freeze_definition(config_path)
+    output_root = REPO_ROOT / "qualifications" / "final-freeze"
+    result = run_final_freeze(definition, repo_root=REPO_ROOT, output_root=output_root)
+    summary = result["summary"]
+    manifest = result["manifest"]
+
+    if args.json:
+        print(json.dumps(manifest, indent=2, sort_keys=True))
+        return 0
+
+    print(f"final-freeze:            {summary['freeze_id']}")
+    print(f"workload-plan:           {summary['workload_plan_id']}")
+    print(f"workload-plan-sha256:    {summary['workload_plan_sha256']}")
+    print(f"freeze-sha256:           {summary['freeze_sha256']}")
+    print(f"conditions:              {summary['condition_count']}")
+    print("variants:                stock, ngi541-direct")
+    print("adaptive-replanning:     prohibited")
+    print(f"reused:                  {'yes' if result['reused'] else 'no'}")
+    print(f"status:                  {summary['status']}")
+    print("results:                 " + str(result["root"].relative_to(REPO_ROOT) / "processed" / "final-manifest.json"))
+    return 0
+
+
 def command_status(args: argparse.Namespace) -> int:
     path = ensure_experiment_exists(args.experiment_id)
     state = read_json(path / "state.json")
@@ -1489,6 +1525,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     workload_planner.add_argument("--json", action="store_true")
     workload_planner.set_defaults(func=command_workload_planner)
+
+    final_freeze = subparsers.add_parser(
+        "final-freeze",
+        help="validate, resume, and freeze the complete R6.5.3 evidence chain",
+    )
+    final_freeze.add_argument(
+        "--config",
+        required=True,
+        help="versioned R6.5.3h final-freeze JSON definition",
+    )
+    final_freeze.add_argument("--json", action="store_true")
+    final_freeze.set_defaults(func=command_final_freeze)
 
     status = subparsers.add_parser(
         "status",

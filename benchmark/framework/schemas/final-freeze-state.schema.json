@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/final-freeze-state.schema.json",
+  "title": "NGI541 R6.5.3h lifecycle state",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "freeze_id",
+    "definition_sha256",
+    "state",
+    "last_completed_state",
+    "created_at",
+    "updated_at",
+    "history"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "state": {
+      "enum": [
+        "CREATED",
+        "INPUTS_RESOLVING",
+        "INPUTS_FROZEN",
+        "PROFILES_VALIDATED",
+        "RUNTIME_READY",
+        "SECURITY_VERIFIED",
+        "NETWORK_ENVELOPE_FROZEN",
+        "CORPUS_READY",
+        "TELEMETRY_READY",
+        "STOCK_PROBING",
+        "PLAN_DERIVED",
+        "PLAN_FROZEN",
+        "VALIDATED",
+        "COMPLETE",
+        "FAILED"
+      ]
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/final-freeze-manifest.schema.json",
+  "title": "NGI541 R6.5.3h final freeze manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "freeze_name",
+    "claim_scope",
+    "resolved_input_sha256",
+    "inputs",
+    "qualification",
+    "variants",
+    "r6_5_4_execution_contract",
+    "freeze_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "claim_scope": {"const": "r6.5.3-final-freeze-no-performance-claim"},
+    "resolved_input_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "freeze_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "inputs": {"type": "object"},
+    "qualification": {"type": "object"},
+    "variants": {"type": "object"},
+    "r6_5_4_execution_contract": {
+      "type": "object",
+      "required": [
+        "variants",
+        "workload_plan_id",
+        "workload_plan_sha256",
+        "same_frozen_plan_for_all_variants",
+        "adaptive_replanning_prohibited",
+        "candidate_variant_tuning_prohibited",
+        "metric_dependent_retry_prohibited",
+        "metric_dependent_outlier_deletion_prohibited"
+      ]
+    }
+  }
+}
