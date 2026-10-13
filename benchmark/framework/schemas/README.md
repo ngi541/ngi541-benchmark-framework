@@ -76,3 +76,7 @@ Workload-specific parameters and observations remain extensible JSON objects.
 - `scientific-corpus.schema.json` — R6.5.3d deterministic corpus-generation definition.
 - `corpus-manifest.schema.json` — normalized indexed-stream or finite-object-set corpus manifest.
 - `coverage-manifest.schema.json` — deterministic execution coverage selection for a frozen corpus.
+- `transport-security.schema.json` — R6.5.3e remote HTTP/3/TLS functional security qualification contract for stock and NGI541 scientific-object transport.
+
+- `dual-host-telemetry.schema.json` — R6.5.3f dual-host telemetry qualification definition.
+- `telemetry-sample.schema.json` — normalized per-host telemetry sample contract.

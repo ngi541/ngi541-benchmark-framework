@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/transport-security.schema.json",
+  "title": "NGI541 R6.5.3e transport security qualification",
+  "type": "object",
+  "required": ["schema_version", "qualification", "inputs", "server", "transport", "variants", "smoke"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "qualification": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "claim_scope": {"type": "string", "minLength": 1}
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "required": ["network_evidence_config", "loadgen_runtime_config", "scientific_corpus_config"],
+      "properties": {
+        "network_evidence_config": {"type": "string", "minLength": 1},
+        "loadgen_runtime_config": {"type": "string", "minLength": 1},
+        "scientific_corpus_config": {"type": "string", "minLength": 1}
+      }
+    },
+    "server": {"type": "object"},
+    "transport": {"type": "object"},
+    "variants": {"type": "object"},
+    "smoke": {"type": "object"}
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/dual-host-telemetry.schema.json",
+  "title": "NGI541 R6.5.3f dual-host telemetry qualification",
+  "type": "object",
+  "required": ["schema_version", "qualification", "inputs", "sampling", "dut", "loadgen"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "qualification": {"type": "object"},
+    "inputs": {"type": "object"},
+    "sampling": {"type": "object"},
+    "dut": {"type": "object"},
+    "loadgen": {"type": "object"}
+  },
+  "additionalProperties": false
+}

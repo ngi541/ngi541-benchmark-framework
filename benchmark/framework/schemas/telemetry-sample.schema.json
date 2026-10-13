@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/telemetry-sample.schema.json",
+  "title": "NGI541 normalized host telemetry sample",
+  "type": "object",
+  "required": ["schema_version", "host_role", "sample_index", "wall_time_ns", "monotonic_ns", "cpu", "thermal", "power", "load", "network", "udp", "process"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "host_role": {"enum": ["dut", "loadgen"]},
+    "sample_index": {"type": "integer", "minimum": 0},
+    "wall_time_ns": {"type": "integer"},
+    "monotonic_ns": {"type": "integer"},
+    "cpu": {"type": "object"},
+    "thermal": {"type": "object"},
+    "power": {"type": "object"},
+    "load": {"type": "object"},
+    "network": {"type": ["object", "null"]},
+    "udp": {"type": "object"},
+    "process": {"type": ["object", "null"]}
+  },
+  "additionalProperties": false
+}

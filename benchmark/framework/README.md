@@ -273,3 +273,43 @@ HACC coverage is first-class and deterministic: `full`,
 which logical objects are exercised; it never changes scientific object
 semantics. Results are content-addressed under `corpora/scientific/` and are
 reused only after artifact-integrity validation.
+
+## R6.5.3e transport security qualification
+
+R6.5.3e binds the frozen R6.5.3c network evidence, R6.5.3b remote HTTP/3
+runtime, and R6.5.3d scientific corpus into a non-performance remote transport
+gate:
+
+```bash
+./scripts/experiment.sh transport-security \
+  --config benchmark/configs/r6.5.3e-pi-mac-http3-security.json
+```
+
+The gate runs both `stock` and `ngi541-direct` NGINX variants, requires HTTP/3
+only, TLS 1.3, `TLS_AES_128_GCM_SHA256`, verified peer identity through an
+ephemeral test CA, and disabled 0-RTT.  Pinned remote curl verifies certificate,
+HTTP version, response size and scientific-object SHA-256.  Pinned HTTP/3
+h2load is additionally exercised once per variant as a functional QUIC path
+probe.  R6.5.3e makes no performance claim and performs no adaptive tuning.
+
+## R6.5.3f dual-host telemetry qualification
+
+R6.5.3f validates the normalized telemetry providers that will be used by the
+stock-only workload planner and later paired campaigns:
+
+```bash
+./scripts/experiment.sh dual-host-telemetry \
+  --config benchmark/configs/r6.5.3f-pi-mac-dual-host-telemetry.json
+```
+
+The Darwin DUT provider records system load, a process-tree CPU/RSS snapshot,
+interface counters, temperature/thermal context, average frequency when exposed,
+and an optional `powermetrics` package-power estimate. Package power is explicitly
+an estimated same-host paired metric; it is never treated as calibrated wall power
+or compared across machines.
+
+The Linux load-generator provider records total and per-core CPU utilization,
+per-core frequency, temperature, Raspberry Pi firmware throttling state, process
+CPU/RSS, interface counters and UDP input errors. Raspberry Pi total watts are
+reported unavailable unless a future external current/power sensor provider is
+configured; voltage alone is never converted into watts.

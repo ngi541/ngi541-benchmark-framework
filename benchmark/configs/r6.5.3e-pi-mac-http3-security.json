@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "qualification": {
+    "name": "r6.5.3e-pi-mac-http3-security",
+    "claim_scope": "functional-security-transport-qualification-only"
+  },
+  "inputs": {
+    "network_evidence_config": "benchmark/configs/r6.5.3c-pi-mac-network-evidence.json",
+    "loadgen_runtime_config": "benchmark/configs/r6.5.3b-pi-http3-loadgen.json",
+    "scientific_corpus_config": "benchmark/configs/r6.5.3d-scientific-corpus.json"
+  },
+  "server": {
+    "name": "ngi541-dut.local",
+    "port": 8443,
+    "workers": 1,
+    "worker_connections": 4096,
+    "startup_timeout_seconds": 15,
+    "client_timeout_seconds": 45
+  },
+  "transport": {
+    "protocol": "http3-only",
+    "tls_version": "1.3",
+    "cipher_suite": "TLS_AES_128_GCM_SHA256",
+    "verify_peer": true,
+    "allow_0rtt": false
+  },
+  "variants": {
+    "stock": {
+      "binary": "build/r5.4-http3/stock/bin/nginx",
+      "sha256": "bcffe3477ff81f6e7fd8499704b3b10f9cea09a857e7ad196b26eca4be597be4",
+      "runtime_libraries": []
+    },
+    "ngi541-direct": {
+      "binary": "build/r5.4-http3/ngi541-direct/bin/nginx",
+      "sha256": "ee69fae13a781b9ddc6db411a1ffeb3638e87758ef0339a41e4f50fe66fe8b8f",
+      "runtime_libraries": [
+        {
+          "path": "build/r5.4-http3/ngi541-direct/lib/libngi541_engine.0.1.dylib",
+          "sha256": "f63e60ba04e5f2cdd4876f0ac416e17c4e533658b68b6e732a4dba5ee9f96f3e"
+        }
+      ]
+    }
+  },
+  "smoke": {
+    "objects": [
+      {
+        "profile_id": "clas12-event-stream",
+        "selector": {
+          "kind": "stream-index",
+          "index": 0
+        }
+      },
+      {
+        "profile_id": "lcls-detector-frame",
+        "selector": {
+          "kind": "stream-index",
+          "index": 0
+        }
+      },
+      {
+        "profile_id": "hacc-multifile-dataset",
+        "selector": {
+          "kind": "bucket-first",
+          "bucket_index": 6
+        }
+      }
+    ]
+  }
+}

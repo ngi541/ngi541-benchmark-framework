@@ -69,6 +69,14 @@ from framework.scientific_corpus import (
     load_definition as load_scientific_corpus_definition,
     run_scientific_corpus,
 )
+from framework.transport_security import (
+    load_definition as load_transport_security_definition,
+    run_transport_security,
+)
+from framework.dual_host_telemetry import (
+    load_definition as load_dual_host_telemetry_definition,
+    run_dual_host_telemetry,
+)
 from framework.provenance import (
     discover_dependencies,
     discover_sources,
@@ -1055,6 +1063,75 @@ def command_scientific_corpus(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_transport_security(args: argparse.Namespace) -> int:
+    config_path = Path(args.config).expanduser()
+    if not config_path.is_absolute():
+        cwd_candidate = (Path.cwd() / config_path).resolve()
+        repo_candidate = (REPO_ROOT / config_path).resolve()
+        config_path = cwd_candidate if cwd_candidate.is_file() else repo_candidate
+    else:
+        config_path = config_path.resolve()
+
+    definition = load_transport_security_definition(config_path)
+    output_root = REPO_ROOT / "qualifications" / "transport-security"
+    result = run_transport_security(
+        definition,
+        repo_root=REPO_ROOT,
+        output_root=output_root,
+    )
+    summary = result["summary"]
+    gate = result["security_gate"]
+
+    if args.json:
+        print(json.dumps(gate, indent=2, sort_keys=True))
+        return 0
+
+    print(f"transport-security:     {summary['qualification_id']}")
+    print(f"network-evidence:      {summary['network_evidence_id']}")
+    print(f"loadgen-runtime:       {summary['loadgen_runtime_id']}")
+    print(f"scientific-corpus:     {summary['scientific_corpus_id']}")
+    print("transport:             HTTP/3 only")
+    print("TLS:                   1.3")
+    print(f"cipher:                {gate['cipher_suite']}")
+    print("peer-verification:     PASS")
+    for variant in gate["variants"]:
+        print(f"variant {variant['variant']}:       {'PASS' if variant['passed'] else 'FAIL'}")
+    print(f"status:                {summary['status']}")
+    print("results:               " + str(result["root"].relative_to(REPO_ROOT) / "processed" / "security-gate.json"))
+    return 0
+
+
+def command_dual_host_telemetry(args: argparse.Namespace) -> int:
+    config_path = Path(args.config).expanduser()
+    if not config_path.is_absolute():
+        cwd_candidate = (Path.cwd() / config_path).resolve()
+        repo_candidate = (REPO_ROOT / config_path).resolve()
+        config_path = cwd_candidate if cwd_candidate.is_file() else repo_candidate
+    else:
+        config_path = config_path.resolve()
+
+    definition = load_dual_host_telemetry_definition(config_path)
+    output_root = REPO_ROOT / "qualifications" / "telemetry"
+    result = run_dual_host_telemetry(definition, repo_root=REPO_ROOT, output_root=output_root)
+    summary = result["summary"]
+
+    if args.json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        return 0
+
+    print(f"dual-host-telemetry:    {summary['qualification_id']}")
+    print(f"network-evidence:      {summary['network_evidence_id']}")
+    print(f"loadgen-runtime:       {summary['loadgen_runtime_id']}")
+    print(f"transport-security:    {summary['transport_security_id']}")
+    print(f"samples/host:          {summary['samples_per_host']}")
+    print(f"sample interval:       {summary['interval_seconds']} s")
+    print(f"DUT package power:     {'available (estimated)' if summary['dut_estimated_power']['available'] else 'unavailable'}")
+    print("loadgen package power: unavailable without external sensor")
+    print(f"status:                {summary['status']}")
+    print("results:               " + str(result["root"].relative_to(REPO_ROOT) / "processed" / "summary.json"))
+    return 0
+
+
 def command_status(args: argparse.Namespace) -> int:
     path = ensure_experiment_exists(args.experiment_id)
     state = read_json(path / "state.json")
@@ -1341,6 +1418,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     scientific_corpus.add_argument("--json", action="store_true")
     scientific_corpus.set_defaults(func=command_scientific_corpus)
+
+    transport_security = subparsers.add_parser(
+        "transport-security",
+        help="verify remote HTTP/3/TLS security and functional scientific-object transport for stock and NGI541",
+    )
+    transport_security.add_argument(
+        "--config",
+        required=True,
+        help="versioned transport-security qualification JSON definition",
+    )
+    transport_security.add_argument("--json", action="store_true")
+    transport_security.set_defaults(func=command_transport_security)
+
+    dual_host_telemetry = subparsers.add_parser(
+        "dual-host-telemetry",
+        help="qualify normalized telemetry providers on the Darwin DUT and Linux SSH load generator",
+    )
+    dual_host_telemetry.add_argument(
+        "--config",
+        required=True,
+        help="versioned dual-host telemetry qualification JSON definition",
+    )
+    dual_host_telemetry.add_argument("--json", action="store_true")
+    dual_host_telemetry.set_defaults(func=command_dual_host_telemetry)
 
     status = subparsers.add_parser(
         "status",
