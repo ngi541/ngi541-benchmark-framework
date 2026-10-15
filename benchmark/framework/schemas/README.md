@@ -97,3 +97,7 @@ concurrency, worker, coverage or target selection.
 
 - `paired-scientific-execution.schema.json` — R6.5.4.1 corrected paired campaign definition and measurement-protocol controls.
 - `paired-execution-result.schema.json` — per-run R6.5.4.1 measurement result.
+
+
+- `result-manifest.schema.json` — canonical publication-level scientific result contract.
+- `result-integrity.schema.json` — fail-closed publication integrity and diagnostic record.

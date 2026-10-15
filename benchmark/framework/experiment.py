@@ -89,6 +89,7 @@ from framework.paired_execution import (
     load_definition as load_paired_execution_definition,
     run_paired_execution,
 )
+from framework.results import build_results_artifact
 from framework.provenance import (
     discover_dependencies,
     discover_sources,
@@ -1241,6 +1242,121 @@ def command_paired_execution(args: argparse.Namespace) -> int:
     return 0
 
 
+
+def command_results(
+    args: argparse.Namespace,
+) -> int:
+    experiment = Path(
+        args.experiment
+    ).expanduser()
+
+    result = build_results_artifact(
+        experiment,
+        repo_root=REPO_ROOT,
+        output_root=(
+            REPO_ROOT
+            / "artifacts"
+            / "results"
+        ),
+    )
+
+    root = result["root"]
+    manifest = result["manifest"]
+
+    if args.json:
+        print(
+            json.dumps(
+                manifest,
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    publication = (
+        root
+        / "publication"
+    )
+
+    results_archive = (
+        publication
+        / "results.tar.gz"
+    )
+
+    evidence_archive = (
+        publication
+        / "evidence.tar.gz"
+    )
+
+    from framework.results import _sha256_file
+
+    print(
+        "result-artifact:         "
+        + manifest["artifact"]["id"]
+    )
+
+    print(
+        "source-experiment:       "
+        + manifest["source"][
+            "experiment_id"
+        ]
+    )
+
+    print(
+        "measurement-protocol:    "
+        + manifest["source"][
+            "measurement_protocol_revision"
+        ]
+    )
+
+    print(
+        "execution-tag:           "
+        + manifest["source"][
+            "execution_tag"
+        ]
+    )
+
+    print(
+        "integrity:               "
+        + manifest["integrity"][
+            "status"
+        ]
+    )
+
+    print(
+        "reused:                  "
+        + (
+            "yes"
+            if result["reused"]
+            else "no"
+        )
+    )
+
+    print(
+        "results-archive-sha256:  "
+        + _sha256_file(
+            results_archive
+        )
+    )
+
+    print(
+        "evidence-archive-sha256: "
+        + _sha256_file(
+            evidence_archive
+        )
+    )
+
+    print(
+        "results:                 "
+        + str(
+            root.relative_to(
+                REPO_ROOT
+            )
+        )
+    )
+
+    return 0
+
 def command_status(args: argparse.Namespace) -> int:
     path = ensure_experiment_exists(args.experiment_id)
     state = read_json(path / "state.json")
@@ -1587,6 +1703,31 @@ def build_parser() -> argparse.ArgumentParser:
     )
     paired_execution.add_argument("--json", action="store_true")
     paired_execution.set_defaults(func=command_paired_execution)
+
+    results = subparsers.add_parser(
+        "results",
+        help=(
+            "validate a COMPLETE paired "
+            "scientific execution and build "
+            "its deterministic publication "
+            "artifact"
+        ),
+    )
+    results.add_argument(
+        "--experiment",
+        required=True,
+        help=(
+            "path to the COMPLETE paired "
+            "scientific execution directory"
+        ),
+    )
+    results.add_argument(
+        "--json",
+        action="store_true",
+    )
+    results.set_defaults(
+        func=command_results
+    )
 
     status = subparsers.add_parser(
         "status",

@@ -21,3 +21,6 @@ __pycache__/
 # Ephemeral execution runtime:
 # copied binaries/libraries and generated TLS key/certificate
 experiments/*/execution/runtime/
+
+# Derived publication artifacts
+/artifacts/

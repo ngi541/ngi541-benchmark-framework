@@ -343,3 +343,23 @@ metric-dependent outlier deletion in R6.5.4.
 `paired-execution` consumes the complete R6.5.3h freeze and executes the frozen 12-condition workload plan for `stock` and `ngi541-direct` with four balanced paired repetitions per condition. No adaptive replanning, metric-dependent retry, or metric-dependent outlier deletion is permitted.
 
 Measurement protocol revision `r6.5.4.1` explicitly raises and preflights the NGINX per-connection request cap, accounts scientific bytes only in the h2load main measurement phase, and uses a nonblocking DUT sampler with exact-window CPU/estimated-energy integration. The initial R6.5.4 partial campaign is retained as aborted evidence and is never resumed into R6.5.4.1.
+
+## Scientific result publication
+
+A COMPLETE paired scientific execution can be transformed into a deterministic,
+read-only publication artifact:
+
+```bash
+./scripts/experiment.sh results \
+  --experiment experiments/r6.5.4/<paired-execution-id>
+```
+
+`results` never modifies the source experiment. It independently verifies the
+frozen campaign structure, raw/processed run identity, paired-analysis
+recomputation, measurement validity, lifecycle evidence, final-freeze linkage
+and immutable artifact inventory.
+
+Generated publication artifacts live below `artifacts/results/` and are not
+tracked by Git. The canonical root contract is `manifest.yaml`; compact results
+and the full evidence dependency closure are exported as deterministic
+`results.tar.gz` and `evidence.tar.gz` archives.

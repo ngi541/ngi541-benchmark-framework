@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/result-integrity.schema.json",
+  "title": "NGI541 scientific result integrity record",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "status",
+    "checks",
+    "udp_diagnostic"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "artifact_id": {
+      "type": "string"
+    },
+    "status": {
+      "const": "PASS"
+    },
+    "checks": {
+      "type": "object"
+    },
+    "udp_diagnostic": {
+      "type": "object"
+    }
+  }
+}
