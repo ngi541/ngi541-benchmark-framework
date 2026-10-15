@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
@@ -16,6 +17,7 @@ RUNTIME_SCHEMA_VERSION = 1
 BASE_RUNTIME_KIND = "curl-http3-ngtcp2"
 H2LOAD_RUNTIME_KIND = "curl-h2load-http3-ngtcp2"
 SUPPORTED_RUNTIME_KINDS = {BASE_RUNTIME_KIND, H2LOAD_RUNTIME_KIND}
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _utc_timestamp() -> str:
@@ -39,6 +41,51 @@ def _slug(text: str) -> str:
 
 def _wants_h2load(definition: dict[str, Any]) -> bool:
     return definition["runtime"].get("kind") == H2LOAD_RUNTIME_KIND
+
+
+def _nghttp2_patch_spec(definition: dict[str, Any]) -> dict[str, Any] | None:
+    patches = definition.get("patches")
+    if not isinstance(patches, dict):
+        return None
+    patch = patches.get("nghttp2")
+    return patch if isinstance(patch, dict) else None
+
+
+def _resolve_nghttp2_patch(definition: dict[str, Any]) -> dict[str, Any] | None:
+    spec = _nghttp2_patch_spec(definition)
+    if spec is None:
+        return None
+
+    relative = Path(spec["path"])
+    path = (REPO_ROOT / relative).resolve()
+
+    try:
+        path.relative_to(REPO_ROOT)
+    except ValueError as exc:
+        raise FrameworkError(
+            "patches.nghttp2.path resolves outside the repository"
+        ) from exc
+
+    if not path.is_file():
+        raise FrameworkError(
+            f"pinned nghttp2 patch does not exist: {relative}"
+        )
+
+    data = path.read_bytes()
+    actual = hashlib.sha256(data).hexdigest()
+    expected = spec["sha256"].lower()
+
+    if actual != expected:
+        raise FrameworkError(
+            "pinned nghttp2 patch SHA-256 mismatch: "
+            f"expected={expected} actual={actual}"
+        )
+
+    return {
+        "path": spec["path"],
+        "sha256": expected,
+        "bytes": data,
+    }
 
 
 def load_definition(path: Path) -> dict[str, Any]:
@@ -95,6 +142,52 @@ def validate_definition(definition: dict[str, Any]) -> None:
         if not re.fullmatch(r"[0-9a-fA-F]{64}", src["sha256"]):
             raise FrameworkError(f"sources.{name}.sha256 must be a 64-digit SHA-256")
 
+    patches = definition.get("patches")
+    if patches is not None:
+        if not isinstance(patches, dict):
+            raise FrameworkError("patches must be an object")
+
+        unknown = sorted(set(patches) - {"nghttp2"})
+        if unknown:
+            raise FrameworkError(
+                "unsupported runtime patch target(s): " + ", ".join(unknown)
+            )
+
+        nghttp2_patch = patches.get("nghttp2")
+        if nghttp2_patch is not None:
+            if not _wants_h2load(definition):
+                raise FrameworkError(
+                    "patches.nghttp2 requires the h2load runtime kind"
+                )
+
+            if not isinstance(nghttp2_patch, dict):
+                raise FrameworkError("patches.nghttp2 must be an object")
+
+            patch_path = nghttp2_patch.get("path")
+            patch_sha = nghttp2_patch.get("sha256")
+
+            if (
+                not isinstance(patch_path, str)
+                or not patch_path.strip()
+            ):
+                raise FrameworkError(
+                    "patches.nghttp2.path must be a non-empty string"
+                )
+
+            relative = Path(patch_path)
+            if relative.is_absolute() or ".." in relative.parts:
+                raise FrameworkError(
+                    "patches.nghttp2.path must be repository-relative"
+                )
+
+            if (
+                not isinstance(patch_sha, str)
+                or not re.fullmatch(r"[0-9a-fA-F]{64}", patch_sha)
+            ):
+                raise FrameworkError(
+                    "patches.nghttp2.sha256 must be a 64-digit SHA-256"
+                )
+
     jobs = int(definition.get("build", {}).get("jobs", 4))
     if jobs < 1:
         raise FrameworkError("build.jobs must be >= 1")
@@ -111,6 +204,8 @@ def _build_packages(definition: dict[str, Any]) -> list[str]:
     ]
     if _wants_h2load(definition):
         packages.extend(["libev-dev", "zlib1g-dev", "libc-ares-dev"])
+        if _nghttp2_patch_spec(definition) is not None:
+            packages.append("patch")
     return packages
 
 
@@ -219,11 +314,46 @@ def render_build_script(definition: dict[str, Any]) -> str:
     ngtcp2_v = src["ngtcp2"]["version"]
     curl_v = src["curl"]["version"]
     nghttp2_v = src.get("nghttp2", {}).get("version")
+    nghttp2_patch = _resolve_nghttp2_patch(definition) if want_h2load else None
     digest = definition_sha256(definition)
 
     h2load_reuse_gate = ""
     h2load_build = ""
+    h2load_patch_materialize = ""
+    h2load_patch_apply = ""
+
     if want_h2load:
+        if nghttp2_patch is not None:
+            patch_b64 = base64.b64encode(
+                nghttp2_patch["bytes"]
+            ).decode("ascii")
+            patch_sha = nghttp2_patch["sha256"]
+
+            h2load_patch_materialize = f"""
+echo "==> materialize pinned nghttp2 patch"
+H2LOAD_PATCH="$WORK/nghttp2-{nghttp2_v}-ngi541.patch"
+printf '%s' {q(patch_b64)} | base64 -d > "$H2LOAD_PATCH"
+H2LOAD_PATCH_SHA=$(sha256sum "$H2LOAD_PATCH" | awk '{{print $1}}')
+if [ "$H2LOAD_PATCH_SHA" != {q(patch_sha)} ]; then
+  echo "nghttp2 patch SHA-256 mismatch: expected={patch_sha} actual=$H2LOAD_PATCH_SHA" >&2
+  exit 26
+fi
+echo "PASS: nghttp2 patch SHA-256 $H2LOAD_PATCH_SHA"
+"""
+
+            h2load_patch_apply = """
+  echo "==> apply pinned nghttp2 patch"
+  if patch --dry-run --batch --forward -p1 < "$H2LOAD_PATCH" >/dev/null 2>&1; then
+    patch --batch --forward -p1 < "$H2LOAD_PATCH"
+    echo "PASS: nghttp2 integration patch applied"
+  elif patch --dry-run --batch --reverse -p1 < "$H2LOAD_PATCH" >/dev/null 2>&1; then
+    echo "PASS: nghttp2 integration patch already applied"
+  else
+    echo "nghttp2 integration patch neither applies cleanly nor matches the already-applied state" >&2
+    exit 27
+  fi
+"""
+
         h2load_reuse_gate = r'''      H2LOAD_OK=0
       if [ -x "$PREFIX/nghttp2/bin/h2load" ] && \
          "$PREFIX/nghttp2/bin/h2load" --help 2>&1 | grep -q -- '--h3' && \
@@ -234,11 +364,12 @@ def render_build_script(definition: dict[str, Any]) -> str:
         h2load_build = f'''
 echo "==> validate C++20 compiler for nghttp2 {nghttp2_v}"
 {_cxx20_probe_script()}
-
+{h2load_patch_materialize}
 echo "==> build nghttp2 {nghttp2_v} with HTTP/3 h2load"
 tar -xf "$DL/nghttp2-{nghttp2_v}.tar.xz" -C "$SRC"
 (
   cd "$SRC/nghttp2-{nghttp2_v}"
+{h2load_patch_apply}
   export PKG_CONFIG_PATH="$PREFIX/openssl/lib/pkgconfig:$PREFIX/nghttp3/lib/pkgconfig:$PREFIX/ngtcp2/lib/pkgconfig"
   export CPPFLAGS="-I$PREFIX/openssl/include -I$PREFIX/nghttp3/include -I$PREFIX/ngtcp2/include"
   # nghttp2 1.69.0 requires C++20 for its applications.  Its bundled
@@ -562,6 +693,7 @@ def run_loadgen_runtime(
                 "rps_capable": True,
                 "connections_streams_capable": True,
                 "version_output": records["h2load_version"]["stdout"].strip(),
+                "patch": definition.get("patches", {}).get("nghttp2"),
             }
 
         summary = {
@@ -583,6 +715,7 @@ def run_loadgen_runtime(
                 "h2load": h2load_summary,
             },
             "sources": definition["sources"],
+            "patches": definition.get("patches", {}),
             "status": "COMPLETE",
         }
         atomic_write_json(processed / "summary.json", summary)

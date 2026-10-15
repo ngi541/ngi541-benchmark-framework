@@ -1,15 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NGI541 R6.5.4 paired execution result",
+  "title": "NGI541 R6.5.4.1 paired execution result",
   "type": "object",
-  "required": ["schema_version", "run_id", "condition_id", "variant", "pair_id", "metrics", "validity"],
+  "required": ["schema_version", "measurement_protocol_revision", "run_id", "condition_id", "variant", "pair_id", "metrics", "diagnostics", "validity"],
   "properties": {
     "schema_version": {"const": 1},
+    "measurement_protocol_revision": {"const": "r6.5.4.1"},
     "run_id": {"type": "string"},
     "condition_id": {"type": "string"},
     "variant": {"enum": ["stock", "ngi541-direct"]},
     "pair_id": {"type": "string"},
     "metrics": {"type": "object"},
+    "diagnostics": {"type": "object"},
     "validity": {"type": "object"}
   },
   "additionalProperties": true

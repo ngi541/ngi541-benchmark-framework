@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "freeze": {
+    "name": "r6.5.4.2-pi-mac-final-freeze",
+    "claim_scope": "r6.5.3-final-freeze-no-performance-claim"
+  },
+  "inputs": {
+    "network_evidence_config": "benchmark/configs/r6.5.3c-pi-mac-network-evidence.json",
+    "loadgen_runtime_config": "benchmark/configs/r6.5.4.2-pi-http3-loadgen.json",
+    "scientific_corpus_config": "benchmark/configs/r6.5.3d-scientific-corpus.json",
+    "transport_security_config": "benchmark/configs/r6.5.4.2-pi-mac-http3-security.json",
+    "dual_host_telemetry_config": "benchmark/configs/r6.5.4.2-pi-mac-dual-host-telemetry.json",
+    "workload_planner_config": "benchmark/configs/r6.5.4.2-pi-mac-stock-workload-planner.json"
+  },
+  "policy": {
+    "selection": "latest-compatible",
+    "resume": "resume-from-last-completed-phase",
+    "reuse_complete_if_inputs_identical": true
+  },
+  "requirements": {
+    "profiles": [
+      "clas12-event-stream",
+      "lcls-detector-frame",
+      "hacc-multifile-dataset"
+    ],
+    "variants": [
+      "stock",
+      "ngi541-direct"
+    ],
+    "transport": {
+      "protocol": "http3-only",
+      "tls_version": "1.3",
+      "cipher_suite": "TLS_AES_128_GCM_SHA256",
+      "verify_peer": true,
+      "allow_0rtt": false
+    },
+    "network": {
+      "direction": "dut-to-loadgen",
+      "minimum_observations": 3
+    },
+    "plan": {
+      "condition_count": 12,
+      "service_target_fractions": [
+        0.5,
+        0.8
+      ],
+      "worker_semantics": [
+        "single",
+        "physical-core-count"
+      ],
+      "calibration_variant": "stock",
+      "candidate_variant_bias_prohibited": true
+    }
+  }
+}

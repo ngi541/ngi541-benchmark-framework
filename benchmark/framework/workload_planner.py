@@ -144,6 +144,12 @@ def validate_definition(definition: dict[str, Any]) -> None:
     planning = definition.get("planning")
     if not isinstance(planning, dict):
         raise FrameworkError("planning must be an object")
+    controls = planning.get("server_controls")
+    if controls != {"keepalive_requests": 20000}:
+        raise FrameworkError(
+            "planning.server_controls must freeze keepalive_requests=20000"
+        )
+
     if planning.get("calibration_variant") != "stock":
         raise FrameworkError("planning.calibration_variant must be exactly 'stock'")
     fractions = planning.get("service_target_fractions")
@@ -284,37 +290,145 @@ def build_hacc_timing_script(
     return "\n".join(rows) + "\n"
 
 
-def parse_h2load_json(value: dict[str, Any], *, target_goodput_mbps: float) -> dict[str, Any]:
+def parse_h2load_json(
+    value: dict[str, Any],
+    *,
+    target_goodput_mbps: float,
+    measurement_seconds: float,
+) -> dict[str, Any]:
     try:
         measurements = value["measurements"]
-        duration = float(measurements["duration"])
+        duration_total = float(measurements["duration"])
         requests = measurements["requests"]
+        statuses = measurements["status_codes"]
         traffic = measurements["traffic"]
+
         data_bytes = int(traffic["data"])
+
+        started = int(requests["started"])
+        done = int(requests["done"])
         succeeded = int(requests["succeeded"])
         failed = int(requests["failed"])
         errored = int(requests["errored"])
         timeout = int(requests.get("timeout", 0))
+
+        status_2xx = int(statuses.get("2xx", 0))
+        status_3xx = int(statuses.get("3xx", 0))
+        status_4xx = int(statuses.get("4xx", 0))
+        status_5xx = int(statuses.get("5xx", 0))
     except (KeyError, TypeError, ValueError) as exc:
-        raise FrameworkError(f"invalid h2load JSON result: {exc}") from exc
-    if duration <= 0:
-        raise FrameworkError("h2load JSON duration must be > 0")
-    goodput = data_bytes * 8.0 / duration / 1_000_000.0
-    ratio = goodput / target_goodput_mbps if target_goodput_mbps > 0 else None
-    performance = measurements.get("performance") if isinstance(measurements.get("performance"), dict) else {}
+        raise FrameworkError(
+            f"invalid h2load JSON result: {exc}"
+        ) from exc
+
+    if duration_total <= 0:
+        raise FrameworkError(
+            "h2load JSON duration must be > 0"
+        )
+
+    if measurement_seconds <= 0:
+        raise FrameworkError(
+            "measurement_seconds must be > 0"
+        )
+
+    successful_statuses = status_2xx + status_3xx
+
+    inflight_at_cutoff = max(0, started - done)
+    completed_failures = max(0, done - succeeded)
+
+    phase_boundary_excess_successes = max(
+        0,
+        successful_statuses - started,
+    )
+
+    completion_excess = max(
+        0,
+        done - started,
+    )
+
+    succeeded_over_status = max(
+        0,
+        succeeded - successful_statuses,
+    )
+
+    status_ahead_of_completed = max(
+        0,
+        successful_statuses - succeeded,
+    )
+
+    unexplained_status_ahead = max(
+        0,
+        status_ahead_of_completed - inflight_at_cutoff,
+    )
+
+    accounting_anomaly = any((
+        phase_boundary_excess_successes,
+        completion_excess,
+        succeeded_over_status,
+        unexplained_status_ahead,
+    ))
+
+    goodput = (
+        data_bytes
+        * 8.0
+        / measurement_seconds
+        / 1_000_000.0
+    )
+
+    ratio = (
+        goodput / target_goodput_mbps
+        if target_goodput_mbps > 0
+        else None
+    )
+
+    performance = (
+        measurements.get("performance")
+        if isinstance(measurements.get("performance"), dict)
+        else {}
+    )
+
     return {
-        "duration_seconds": duration,
+        "duration_seconds_total": duration_total,
+        "measurement_seconds": measurement_seconds,
+
         "application_data_bytes": data_bytes,
         "application_goodput_mbps": goodput,
         "achieved_target_ratio": ratio,
+        "scientific_byte_accounting":
+            "h2load-main-phase-body-bytes",
+
+        "requests_started": started,
+        "requests_done": done,
         "requests_succeeded": succeeded,
         "requests_failed": failed,
         "requests_errored": errored,
         "requests_timeout": timeout,
-        "request_per_second": measurements.get("request_per_second"),
-        "bytes_per_second_total": measurements.get("bytes_per_second"),
-        "udp_datagram": measurements.get("udp_datagram"),
-        "performance": performance,
+
+        "requests_inflight_at_cutoff": inflight_at_cutoff,
+        "requests_completed_failures": completed_failures,
+
+        "status_2xx": status_2xx,
+        "status_3xx": status_3xx,
+        "status_4xx": status_4xx,
+        "status_5xx": status_5xx,
+        "successful_http_statuses": successful_statuses,
+
+        "h2load_phase_boundary_excess_successes":
+            phase_boundary_excess_successes,
+        "h2load_completion_excess": completion_excess,
+        "h2load_unexplained_status_ahead":
+            unexplained_status_ahead,
+        "h2load_accounting_anomaly":
+            accounting_anomaly,
+
+        "request_per_second":
+            measurements.get("request_per_second"),
+        "bytes_per_second_total":
+            measurements.get("bytes_per_second"),
+        "udp_datagram":
+            measurements.get("udp_datagram"),
+        "performance":
+            performance,
     }
 
 
@@ -392,8 +506,20 @@ def evaluate_probe(
     ratio = h2load.get("achieved_target_ratio")
     if not isinstance(ratio, (int, float)) or ratio < float(policy["achieved_target_ratio_min"]):
         reasons.append("target-goodput-not-sustained")
-    if any(int(h2load.get(name, 0)) != 0 for name in ("requests_failed", "requests_errored", "requests_timeout")):
+    if int(h2load.get("requests_timeout", 0)) != 0:
+        reasons.append("http-request-timeout")
+
+    if (
+        int(h2load.get("status_4xx", 0)) != 0
+        or int(h2load.get("status_5xx", 0)) != 0
+    ):
+        reasons.append("http-status-failure")
+
+    if int(h2load.get("requests_completed_failures", 0)) != 0:
         reasons.append("http-request-failure")
+
+    if h2load.get("h2load_accounting_anomaly") is True:
+        reasons.append("h2load-accounting-anomaly")
     total = loadgen.get("max_total_cpu_busy_percent")
     if not isinstance(total, (int, float)):
         reasons.append("loadgen-total-cpu-unavailable")
@@ -777,7 +903,11 @@ def _run_probe(
         raise FrameworkError(f"invalid h2load output JSON for {probe_name}: {exc}") from exc
     atomic_write_json(probe_dir / "h2load-result.json", result_json)
     remote_samples = _parse_remote_jsonl(telemetry_text)
-    h2 = parse_h2load_json(result_json, target_goodput_mbps=target_goodput_mbps)
+    h2 = parse_h2load_json(
+        result_json,
+        target_goodput_mbps=target_goodput_mbps,
+        measurement_seconds=measurement_seconds,
+    )
     loadgen = summarize_loadgen_telemetry(remote_samples)
     dut = summarize_dut_telemetry(local_samples, int(h2["application_data_bytes"]))
     evaluation = evaluate_probe(h2, loadgen, dut, policy)
@@ -942,7 +1072,28 @@ def run_workload_planner(definition: dict[str, Any], *, repo_root: Path, output_
                         worker_connections=int(server_cfg.get("worker_connections", 4096)),
                         cipher_suite=transport["cipher_suite"],
                     ).replace("server_name ngi541-dut.local;", f"server_name {server_name};")
-                    atomic_write_text(server_runtime / "conf" / "nginx.conf", config)
+
+                    keepalive_requests = int(
+                        planning["server_controls"]["keepalive_requests"]
+                    )
+
+                    marker = "        http3 on;"
+
+                    if marker not in config:
+                        raise FrameworkError(
+                            "unable to inject planner keepalive_requests"
+                        )
+
+                    config = config.replace(
+                        marker,
+                        f"        keepalive_requests {keepalive_requests};\n\n{marker}",
+                        1,
+                    )
+
+                    atomic_write_text(
+                        server_runtime / "conf" / "nginx.conf",
+                        config,
+                    )
 
                     test = subprocess.run(
                         [str(stock_binary), "-p", str(server_runtime) + os.sep, "-c", "conf/nginx.conf", "-t"],

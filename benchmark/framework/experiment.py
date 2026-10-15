@@ -1227,6 +1227,8 @@ def command_paired_execution(args: argparse.Namespace) -> int:
     print(f"final-freeze:            {summary['freeze_id']}")
     print(f"freeze-sha256:           {summary['freeze_sha256']}")
     print(f"workload-plan:           {summary['workload_plan_id']}")
+    if summary.get("measurement_protocol_revision"):
+        print(f"measurement-protocol:    {summary['measurement_protocol_revision']}")
     print(f"conditions:              {summary['condition_count']}")
     print(f"paired repetitions:      {summary['repetitions']}")
     print(f"pairs:                   {summary['pair_count']}")

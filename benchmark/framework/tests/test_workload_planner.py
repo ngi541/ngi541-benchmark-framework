@@ -22,7 +22,7 @@ from framework.workload_planner import (
 )
 
 ROOT = Path(__file__).resolve().parents[3]
-CONFIG = ROOT / "benchmark" / "configs" / "r6.5.3g-pi-mac-stock-workload-planner.json"
+CONFIG = ROOT / "benchmark" / "configs" / "r6.5.4.2-pi-mac-stock-workload-planner.json"
 
 
 class WorkloadPlannerDefinitionTests(unittest.TestCase):
@@ -38,6 +38,18 @@ class WorkloadPlannerDefinitionTests(unittest.TestCase):
             definition_sha256(self.definition),
             definition_sha256(json.loads(json.dumps(self.definition, sort_keys=True))),
         )
+
+    def test_keepalive_requests_is_frozen_above_nginx_default(self):
+        self.assertEqual(
+            self.definition["planning"]["server_controls"],
+            {"keepalive_requests": 20000},
+        )
+
+        broken = copy.deepcopy(self.definition)
+        broken["planning"]["server_controls"]["keepalive_requests"] = 1000
+
+        with self.assertRaises(FrameworkError):
+            validate_definition(broken)
 
     def test_calibration_variant_is_stock_only(self):
         value = copy.deepcopy(self.definition)
@@ -119,18 +131,60 @@ class WorkloadDerivationTests(unittest.TestCase):
 
 
 class H2loadResultTests(unittest.TestCase):
-    def test_parse_h2load_json_uses_application_data_bytes(self):
-        row = parse_h2load_json({"measurements": {
-            "duration": 10.0,
-            "request_per_second": 100,
-            "bytes_per_second": 7_000_000,
-            "requests": {"succeeded": 1000, "failed": 0, "errored": 0, "timeout": 0},
-            "traffic": {"data": 62_500_000},
-            "udp_datagram": {"sent": 1, "recv": 1},
-            "performance": {},
-        }}, target_goodput_mbps=50.0)
-        self.assertAlmostEqual(row["application_goodput_mbps"], 50.0)
-        self.assertAlmostEqual(row["achieved_target_ratio"], 1.0)
+    def test_parse_h2load_json_uses_exact_main_window_body_bytes(self):
+        row = parse_h2load_json(
+            {
+                "measurements": {
+                    "duration": 13.0,
+                    "request_per_second": 100,
+                    "bytes_per_second": 7_000_000,
+                    "requests": {
+                        "started": 1001,
+                        "done": 1000,
+                        "succeeded": 1000,
+                        "failed": 0,
+                        "errored": 0,
+                        "timeout": 0,
+                    },
+                    "status_codes": {
+                        "2xx": 1001,
+                        "3xx": 0,
+                        "4xx": 0,
+                        "5xx": 0,
+                    },
+                    "traffic": {
+                        "data": 62_500_000,
+                    },
+                    "udp_datagram": {
+                        "sent": 1,
+                        "recv": 1,
+                    },
+                    "performance": {},
+                }
+            },
+            target_goodput_mbps=50.0,
+            measurement_seconds=10.0,
+        )
+
+        self.assertAlmostEqual(
+            row["application_goodput_mbps"],
+            50.0,
+        )
+        self.assertAlmostEqual(
+            row["achieved_target_ratio"],
+            1.0,
+        )
+        self.assertEqual(
+            row["requests_inflight_at_cutoff"],
+            1,
+        )
+        self.assertEqual(
+            row["requests_completed_failures"],
+            0,
+        )
+        self.assertFalse(
+            row["h2load_accounting_anomaly"]
+        )
 
     def test_headroom_summary_tracks_peak_core(self):
         samples = [
@@ -153,6 +207,53 @@ class H2loadResultTests(unittest.TestCase):
         result = evaluate_probe(h2, load, dut, policy)
         self.assertFalse(result["passed"])
         self.assertIn("loadgen-single-core-headroom", result["reasons"])
+
+    def test_inflight_at_cutoff_is_not_http_failure(self):
+        h2 = {
+            "achieved_target_ratio": 0.98,
+            "requests_timeout": 0,
+            "requests_completed_failures": 0,
+            "requests_inflight_at_cutoff": 1,
+            "status_4xx": 0,
+            "status_5xx": 0,
+            "h2load_accounting_anomaly": False,
+        }
+
+        load = {
+            "max_total_cpu_busy_percent": 50.0,
+            "max_single_core_busy_percent": 90.0,
+            "firmware_throttling_active": False,
+        }
+
+        dut = {
+            "throttling_active": False,
+        }
+
+        policy = {
+            "achieved_target_ratio_min": 0.95,
+            "loadgen_total_cpu_max_percent": 85,
+            "loadgen_core_cpu_max_percent": 95,
+            "require_no_throttling": True,
+        }
+
+        self.assertTrue(
+            evaluate_probe(h2, load, dut, policy)["passed"]
+        )
+
+        h2["requests_completed_failures"] = 1
+
+        result = evaluate_probe(
+            h2,
+            load,
+            dut,
+            policy,
+        )
+
+        self.assertFalse(result["passed"])
+        self.assertIn(
+            "http-request-failure",
+            result["reasons"],
+        )
 
     def test_first_passing_candidate_is_selected_without_metric_ranking(self):
         probes = [

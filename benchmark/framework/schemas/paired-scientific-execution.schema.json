@@ -1,13 +1,48 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NGI541 R6.5.4 paired scientific execution definition",
+  "title": "NGI541 R6.5.4.1 paired scientific execution definition",
   "type": "object",
   "required": ["schema_version", "experiment", "inputs", "execution", "analysis"],
   "properties": {
     "schema_version": {"const": 1},
     "experiment": {"type": "object"},
     "inputs": {"type": "object"},
-    "execution": {"type": "object"},
+    "execution": {
+      "type": "object",
+      "required": [
+        "measurement_protocol_revision", "repetitions", "comparison",
+        "condition_order", "variant_order", "sample_interval_seconds",
+        "server_controls", "telemetry", "hacc_execution", "validity",
+        "retry_policy", "outlier_policy"
+      ],
+      "properties": {
+        "measurement_protocol_revision": {"const": "r6.5.4.1"},
+        "repetitions": {"const": 4},
+        "comparison": {"const": "paired-balanced"},
+        "condition_order": {"const": "rotating-rounds"},
+        "variant_order": {"const": "balanced-by-condition-round"},
+        "sample_interval_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "server_controls": {
+          "type": "object",
+          "required": ["keepalive_requests"],
+          "properties": {"keepalive_requests": {"type": "integer", "minimum": 2000}},
+          "additionalProperties": false
+        },
+        "telemetry": {
+          "type": "object",
+          "required": ["dut_sampling", "thermal_guard_interval_seconds"],
+          "properties": {
+            "dut_sampling": {"const": "nonblocking-window-v2"},
+            "thermal_guard_interval_seconds": {"type": "number", "exclusiveMinimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "hacc_execution": {"type": "object"},
+        "validity": {"type": "object"},
+        "retry_policy": {"const": "no-metric-dependent-retry"},
+        "outlier_policy": {"const": "retain-all-valid-runs"}
+      }
+    },
     "analysis": {"type": "object"}
   },
   "additionalProperties": false

@@ -19,6 +19,7 @@ from framework.loadgen_runtime import (
 
 CONFIG = BENCHMARK_DIR / "configs" / "r6.5.2-pi-http3-loadgen.json"
 H2LOAD_CONFIG = BENCHMARK_DIR / "configs" / "r6.5.3b-pi-http3-loadgen.json"
+PATCHED_H2LOAD_CONFIG = BENCHMARK_DIR / "configs" / "r6.5.4.2-pi-http3-loadgen.json"
 
 
 class LoadgenRuntimeDefinitionTests(unittest.TestCase):
@@ -85,6 +86,27 @@ class H2loadRuntimeDefinitionTests(unittest.TestCase):
         self.assertNotIn("nghttp2", value["sources"])
 
 
+    def test_patched_h2load_definition_pins_accounting_patch(self):
+        value = load_definition(PATCHED_H2LOAD_CONFIG)
+        patch = value["patches"]["nghttp2"]
+
+        self.assertEqual(
+            patch["path"],
+            "integration/patches/nghttp2-1.69.0/"
+            "0001-h2load-main-phase-stream-accounting.patch",
+        )
+        self.assertEqual(
+            patch["sha256"],
+            "ee36b8c0ff3b6c2bf703dcb0ea5608b237a98857d2d164960a5bf1de769d08a5",
+        )
+
+    def test_patched_h2load_definition_has_distinct_identity(self):
+        self.assertNotEqual(
+            definition_sha256(load_definition(H2LOAD_CONFIG)),
+            definition_sha256(load_definition(PATCHED_H2LOAD_CONFIG)),
+        )
+
+
 class H2loadBuildScriptTests(unittest.TestCase):
     def test_script_builds_http3_h2load_and_checks_capabilities(self):
         value = load_definition(H2LOAD_CONFIG)
@@ -132,6 +154,52 @@ class H2loadBuildScriptTests(unittest.TestCase):
             definition_sha256(load_definition(CONFIG)),
             definition_sha256(load_definition(H2LOAD_CONFIG)),
         )
+
+
+    def test_patched_h2load_build_verifies_and_applies_patch(self):
+        value = load_definition(PATCHED_H2LOAD_CONFIG)
+        script = render_build_script(value)
+
+        self.assertIn(
+            "ee36b8c0ff3b6c2bf703dcb0ea5608b237a98857d2d164960a5bf1de769d08a5",
+            script,
+        )
+        self.assertIn(
+            'printf \'%s\'',
+            script,
+        )
+        self.assertIn(
+            "base64 -d",
+            script,
+        )
+        self.assertIn(
+            "patch --dry-run --batch --forward -p1",
+            script,
+        )
+        self.assertIn(
+            "patch --batch --forward -p1",
+            script,
+        )
+        self.assertIn(
+            "patch --dry-run --batch --reverse -p1",
+            script,
+        )
+
+        patch_pos = script.index(
+            'echo "==> apply pinned nghttp2 patch"'
+        )
+        configure_pos = script.index(
+            './configure --prefix="$PREFIX/nghttp2" --enable-app --enable-http3'
+        )
+
+        self.assertLess(patch_pos, configure_pos)
+
+    def test_patched_h2load_rejects_patch_sha_drift(self):
+        value = load_definition(PATCHED_H2LOAD_CONFIG)
+        value["patches"]["nghttp2"]["sha256"] = "0" * 64
+
+        with self.assertRaises(FrameworkError):
+            render_build_script(value)
 
 
 if __name__ == "__main__":

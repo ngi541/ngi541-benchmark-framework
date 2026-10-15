@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "runtime": {
+    "name": "r6.5.4.2-pi-http3-loadgen",
+    "kind": "curl-h2load-http3-ngtcp2",
+    "install_root": ".local/ngi541/loadgen/http3",
+    "claim_scope": "load-generator-runtime-with-patched-h2load-accounting-qualification-only"
+  },
+  "remote": {
+    "provider": "linux-ssh",
+    "role": "loadgen",
+    "ssh_target": "pi@192.168.1.65",
+    "connect_timeout_seconds": 10
+  },
+  "build": {
+    "jobs": 4
+  },
+  "sources": {
+    "openssl": {
+      "version": "3.6.4",
+      "url": "https://www.openssl.org/source/old/3.6/openssl-3.6.4.tar.gz",
+      "sha256": "9bffaa1ad1e07b354c21bd3324ec02fa15579f45a7d0494b3e74bc449b7333ef"
+    },
+    "nghttp3": {
+      "version": "1.18.0",
+      "url": "https://github.com/ngtcp2/nghttp3/releases/download/v1.18.0/nghttp3-1.18.0.tar.gz",
+      "sha256": "2812e9c06583fa24c8dc46bdb5291310a69196352ceaca8fbe98106ff36ae7d8"
+    },
+    "ngtcp2": {
+      "version": "1.25.0",
+      "url": "https://github.com/ngtcp2/ngtcp2/releases/download/v1.25.0/ngtcp2-1.25.0.tar.gz",
+      "sha256": "1c0843076528a87b65e9a9d455100941f4cb65d44f96c5da6ae56df146043955"
+    },
+    "curl": {
+      "version": "8.22.0",
+      "url": "https://curl.se/download/curl-8.22.0.tar.xz",
+      "sha256": "f7ef3ae8a22e521f289803fe93543eb64c329b58aa73a9e224dfd915a2a5f4f7"
+    },
+    "nghttp2": {
+      "version": "1.69.0",
+      "url": "https://github.com/nghttp2/nghttp2/releases/download/v1.69.0/nghttp2-1.69.0.tar.xz",
+      "sha256": "1fb324b6ec2c56f6bde0658f4139ffd8209fa9e77ce98fd7a5f63af8d0e508ad"
+    }
+  },
+  "patches": {
+    "nghttp2": {
+      "path": "integration/patches/nghttp2-1.69.0/0001-h2load-main-phase-stream-accounting.patch",
+      "sha256": "ee36b8c0ff3b6c2bf703dcb0ea5608b237a98857d2d164960a5bf1de769d08a5"
+    }
+  }
+}

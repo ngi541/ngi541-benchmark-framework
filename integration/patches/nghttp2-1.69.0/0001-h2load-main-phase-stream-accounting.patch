@@ -1,0 +1,102 @@
+diff --git a/src/h2load.cc b/src/h2load.cc
+index 3151ead..e343d83 100644
+--- a/src/h2load.cc
++++ b/src/h2load.cc
+@@ -192,7 +192,8 @@ Stats::Stats(size_t req_todo, size_t nclients)
+     udp_dgram_recv(0),
+     udp_dgram_sent(0) {}
+ 
+-Stream::Stream() : req_stat{}, status_success(-1) {}
++Stream::Stream()
++  : req_stat{}, status_success(-1), main_measurement(false) {}
+ 
+ namespace {
+ std::random_device rd;
+@@ -1102,7 +1103,11 @@ int Client::terminate_session() {
+   return 0;
+ }
+ 
+-void Client::on_request(int64_t stream_id) { streams[stream_id] = Stream(); }
++void Client::on_request(int64_t stream_id) {
++  auto &stream = streams[stream_id];
++  stream = Stream();
++  stream.main_measurement = worker->current_phase == Phase::MAIN_DURATION;
++}
+ 
+ void Client::on_header(int64_t stream_id, std::span<const uint8_t> name,
+                        std::span<const uint8_t> value) {
+@@ -1112,7 +1117,8 @@ void Client::on_header(int64_t stream_id, std::span<const uint8_t> name,
+   }
+   auto &stream = (*itr).second;
+ 
+-  if (worker->current_phase != Phase::MAIN_DURATION) {
++  if (!stream.main_measurement ||
++      worker->current_phase != Phase::MAIN_DURATION) {
+     // If the stream is for warm-up phase, then mark as a success
+     // But we do not update the count for 2xx, 3xx, etc status codes
+     // Same has been done in on_status_code function
+@@ -1163,7 +1169,8 @@ void Client::on_status_code(int64_t stream_id, uint16_t status) {
+   }
+   auto &stream = (*itr).second;
+ 
+-  if (worker->current_phase != Phase::MAIN_DURATION) {
++  if (!stream.main_measurement ||
++      worker->current_phase != Phase::MAIN_DURATION) {
+     stream.status_success = 1;
+     return;
+   }
+@@ -1184,7 +1191,11 @@ void Client::on_status_code(int64_t stream_id, uint16_t status) {
+ }
+ 
+ void Client::on_stream_close(int64_t stream_id, bool success, bool final) {
+-  if (worker->current_phase == Phase::MAIN_DURATION) {
++  auto itr = streams.find(stream_id);
++  auto main_measurement =
++    itr != std::ranges::end(streams) && itr->second.main_measurement;
++
++  if (worker->current_phase == Phase::MAIN_DURATION && main_measurement) {
+     if (req_inflight > 0) {
+       --req_inflight;
+     }
+@@ -1199,7 +1210,7 @@ void Client::on_stream_close(int64_t stream_id, bool success, bool final) {
+       ++worker->stats.req_success;
+       ++cstat.req_success;
+ 
+-      if (streams[stream_id].status_success == 1) {
++      if (itr->second.status_success == 1) {
+         ++worker->stats.req_status_success;
+       } else {
+         ++worker->stats.req_failed;
+diff --git a/src/h2load.h b/src/h2load.h
+index e7b7b1c..0087ff2 100644
+--- a/src/h2load.h
++++ b/src/h2load.h
+@@ -384,6 +384,8 @@ struct Worker {
+ struct Stream {
+   RequestStat req_stat;
+   int status_success;
++  // True only for requests submitted during the measured main phase.
++  bool main_measurement;
+   Stream();
+ };
+ 
+diff --git a/src/h2load_http3_session.cc b/src/h2load_http3_session.cc
+index 7f4010a..4044a24 100644
+--- a/src/h2load_http3_session.cc
++++ b/src/h2load_http3_session.cc
+@@ -190,7 +190,14 @@ int recv_data(nghttp3_conn *conn, int64_t stream_id, const uint8_t *data,
+ 
+ void Http3Session::recv_data(int64_t stream_id, std::span<const uint8_t> data) {
+   client_->record_ttfb();
+-  client_->worker->stats.bytes_body += data.size();
++
++  auto itr = client_->streams.find(stream_id);
++  if (itr != client_->streams.end() &&
++      itr->second.main_measurement &&
++      client_->worker->current_phase == Phase::MAIN_DURATION) {
++    client_->worker->stats.bytes_body += data.size();
++  }
++
+   consume(stream_id, data.size());
+ }
+ 
