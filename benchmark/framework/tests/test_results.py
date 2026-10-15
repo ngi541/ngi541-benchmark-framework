@@ -466,12 +466,22 @@ class ResultsArtifactTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "Median paired change vs stock (%)",
+            "Goodput change vs stock (%) "
+            "— positive = higher goodput",
             svg,
         )
 
         self.assertIn(
-            "0% = no difference",
+            "positive = higher goodput "
+            "for NGI541-direct; "
+            "negative = lower goodput",
+            svg,
+        )
+
+        self.assertIn(
+            "0% = no difference; "
+            "left = NGI541-direct worse, "
+            "right = better",
             svg,
         )
 
@@ -484,6 +494,99 @@ class ResultsArtifactTests(unittest.TestCase):
             "NGI541-direct wins 2/4",
             svg,
         )
+
+
+    def test_cpu_and_energy_figures_explain_sign_direction(
+        self,
+    ) -> None:
+
+        metrics = (
+            (
+                "dut_process_cpu_seconds_per_gib",
+                "CPU cost change vs stock (%) "
+                "— positive = lower CPU cost",
+                "positive = lower CPU cost "
+                "for NGI541-direct; "
+                "negative = higher CPU cost",
+            ),
+            (
+                "dut_estimated_energy_j_per_gib",
+                "Energy change vs stock (%) "
+                "— positive = lower energy use",
+                "positive = lower energy use "
+                "for NGI541-direct; "
+                "negative = higher energy use",
+            ),
+        )
+
+        condition_ids = [
+            "w1-clas12-event-stream-s50",
+            "w1-clas12-event-stream-s80",
+            "w1-hacc-multifile-dataset-s50",
+            "w1-hacc-multifile-dataset-s80",
+            "w1-lcls-detector-frame-s50",
+            "w1-lcls-detector-frame-s80",
+            "w4-clas12-event-stream-s50",
+            "w4-clas12-event-stream-s80",
+            "w4-hacc-multifile-dataset-s50",
+            "w4-hacc-multifile-dataset-s80",
+            "w4-lcls-detector-frame-s50",
+            "w4-lcls-detector-frame-s80",
+        ]
+
+        for metric, axis_label, interpretation in metrics:
+            conditions = [
+                {
+                    "condition_id":
+                        condition_id,
+                    "metrics": {
+                        metric: {
+                            "pair_count": 4,
+                            "median_delta_percent": 1.0,
+                            "ngi541_pair_wins": 3,
+                            "stock_pair_wins": 1,
+                            "ties": 0,
+                        }
+                    },
+                }
+                for condition_id
+                in condition_ids
+            ]
+
+            pairs = [
+                {
+                    "delta_percent_positive_favors_ngi541": {
+                        metric: 1.0,
+                    }
+                }
+                for _ in range(48)
+            ]
+
+            svg = _svg_condition_delta_plot(
+                metric,
+                {
+                    "conditions":
+                        conditions,
+                    "pairs":
+                        pairs,
+                },
+            )
+
+            self.assertIn(
+                axis_label,
+                svg,
+            )
+
+            self.assertIn(
+                interpretation,
+                svg,
+            )
+
+            self.assertIn(
+                "left = NGI541-direct worse, "
+                "right = better",
+                svg,
+            )
 
 
 if __name__ == "__main__":

@@ -2459,6 +2459,17 @@ def _metric_figure_metadata(
                     "across 4 repetitions "
                     "per condition"
                 ),
+            "interpretation":
+                (
+                    "positive = higher goodput "
+                    "for NGI541-direct; "
+                    "negative = lower goodput"
+                ),
+            "axis_label":
+                (
+                    "Goodput change vs stock (%) "
+                    "— positive = higher goodput"
+                ),
         },
         "dut_process_cpu_seconds_per_gib": {
             "title":
@@ -2472,6 +2483,17 @@ def _metric_figure_metadata(
                     "change across 4 repetitions "
                     "per condition"
                 ),
+            "interpretation":
+                (
+                    "positive = lower CPU cost "
+                    "for NGI541-direct; "
+                    "negative = higher CPU cost"
+                ),
+            "axis_label":
+                (
+                    "CPU cost change vs stock (%) "
+                    "— positive = lower CPU cost"
+                ),
         },
         "dut_estimated_energy_j_per_gib": {
             "title":
@@ -2484,6 +2506,17 @@ def _metric_figure_metadata(
                     "Median paired energy "
                     "change across 4 repetitions "
                     "per condition"
+                ),
+            "interpretation":
+                (
+                    "positive = lower energy use "
+                    "for NGI541-direct; "
+                    "negative = higher energy use"
+                ),
+            "axis_label":
+                (
+                    "Energy change vs stock (%) "
+                    "— positive = lower energy use"
                 ),
         },
     }
@@ -2850,7 +2883,7 @@ def _svg_condition_delta_plot(
         'font-family="sans-serif" font-size="15" '
         'fill="#444">'
         f'{metadata["subtitle"]}; '
-        'positive values favor NGI541-direct'
+        f'{metadata["interpretation"]}'
         '</text>\n'
         f'<text x="{left}" y="94" '
         'font-family="sans-serif" font-size="14" '
@@ -2869,7 +2902,7 @@ def _svg_condition_delta_plot(
         f'x="{zero_x+7:.2f}" y="{top-18}" '
         'font-family="sans-serif" font-size="12" '
         'fill="#333">'
-        '0% = no difference'
+        '0% = no difference; left = NGI541-direct worse, right = better'
         '</text>\n'
         + "\n".join(row_markup)
         + "\n"
@@ -2877,7 +2910,7 @@ def _svg_condition_delta_plot(
         f'y="{height-48}" text-anchor="middle" '
         'font-family="sans-serif" font-size="14" '
         'font-weight="600" fill="#111">'
-        'Median paired change vs stock (%)'
+        f'{metadata["axis_label"]}'
         '</text>\n'
         f'<text x="{left}" y="{height-18}" '
         'font-family="sans-serif" font-size="12" '

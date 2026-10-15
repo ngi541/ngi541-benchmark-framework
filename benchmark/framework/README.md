@@ -368,3 +368,6 @@ and the full evidence dependency closure are exported as deterministic
 Publication figures use the predeclared condition-level median paired delta (four paired repetitions per condition) rather than an unlabeled pair-index scatter. The x-axis is percentage change versus stock, `0%` is explicitly marked as no difference, positive values favor `ngi541-direct`, and every condition reports its NGI541-direct pair-win count. All 48 valid pair-level values remain available in `tables/pair-results.csv`; no outlier deletion is performed.
 
 The scientific result ID is stable for the accepted frozen execution. A separate `publication/bundle.json` gives the concrete exported package a content-addressed identity derived from the exact generator commit and archive checksums.
+
+
+For publication figures, delta sign semantics are metric-aware. Goodput uses `(ngi541-direct - stock) / stock`, so positive means higher goodput. CPU cost per delivered GiB and estimated energy per delivered GiB use `(stock - ngi541-direct) / stock`, so positive means lower resource cost for `ngi541-direct`, while negative means higher resource cost. The generated SVG axis labels and subtitles state this explicitly.
