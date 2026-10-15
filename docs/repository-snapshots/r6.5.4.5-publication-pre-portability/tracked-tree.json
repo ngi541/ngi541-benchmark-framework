@@ -1,0 +1,1028 @@
+{
+  "commit": "cc253618e59351ea74952a8b03ab3374509a1d84",
+  "file_count": 170,
+  "files": [
+    {
+      "mode": "100644",
+      "object_id": "33bc6bd296fa81ac603cf204eb12ae878ab56a6e",
+      "object_type": "blob",
+      "path": ".github/workflows/ci.yml"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ae28d235c62434ecf9e8731f13a4028f06862943",
+      "object_type": "blob",
+      "path": ".gitignore"
+    },
+    {
+      "mode": "100644",
+      "object_id": "e0e6f4b577ad3aaaba19a0eede5a18a10bc91af9",
+      "object_type": "blob",
+      "path": "README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "85d72f0cc36ce620c1f26fe1cec55973fea5d328",
+      "object_type": "blob",
+      "path": "benchmark/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "aa1850321d94a49169f7e8d5db76c920689c28f9",
+      "object_type": "blob",
+      "path": "benchmark/configs/c2.2-local-http3.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "89050986e36a37cb1ee9c5ec36692eb3886abf5e",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.3-local-http3-control.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "72f80ee7aa2c90d54a5aef79a43f1561852222b0",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.1-pi-mac-network.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "35ab05974f715767b0d2a7e0e80f8b80ca0c0c0f",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.2-pi-http3-loadgen.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "267ee3c6e94718b8af43d2bedf6402fcee7b9b4c",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.3b-pi-http3-loadgen.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ec59bac03062fe0b1a5a8c7a27d481d6b0dec939",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.3c-pi-mac-network-evidence.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "75e3440f56262c6e9f0401a5b9a194d6509108ca",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.3d-scientific-corpus.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "1157334ac21f240da4d3e51584956881e16bbf63",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.3e-pi-mac-http3-security.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "77bdaaff27128cfeff01f7bc6adbb8251ae943e9",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.3f-pi-mac-dual-host-telemetry.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "d349f01dd7a48138801172fb55c96d178f836f06",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.3g-pi-mac-stock-workload-planner.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "22f3c5a227cd310dc1dea9da7ac10aae83e2dd0a",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.3h-pi-mac-final-freeze.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "dff3541ca292ec7b2ab0e49b362bccf967c7a0bf",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4-pi-mac-paired-scientific-execution.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "7962fd2f43cd333d0943064c7679ea888ef30bb6",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4.1-pi-mac-paired-scientific-execution.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "4d7207ce041fcd951dd07efab54c8580f8d682f7",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4.2-pi-http3-loadgen.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ff2a43fbe8ab5e8868c08ec3efb1b522bfd514a5",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4.2-pi-mac-dual-host-telemetry.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ce4a6bc4a8c959fcd373bc04ec6969f547140110",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4.2-pi-mac-final-freeze.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "bb520baf77eb52daeb1558375da6a5768d93c6da",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4.2-pi-mac-http3-security.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "0d11ac48aef5278e8cb3aaa2843699b03816a9ee",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4.2-pi-mac-paired-scientific-execution.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "9d32266ae208e2c249ada6d9585251c32667c0e0",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4.2-pi-mac-stock-workload-planner.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "6879a7740eb174030f2cbb65f3e3b11a404cee69",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4.3-pi-mac-paired-scientific-execution.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "903511d5fe7392743e1b7c3ddc395af42d575fab",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4.4-pi-mac-paired-scientific-execution.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "8cdd8617533c8b19101fe8cf4fde7ee46936f071",
+      "object_type": "blob",
+      "path": "benchmark/configs/r6.5.4.5-pi-mac-paired-scientific-execution.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "3eb1143018461ac1c502ccbc549fb636cf1f10a3",
+      "object_type": "blob",
+      "path": "benchmark/framework/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "38fe1a461617229e0282fe6ffd226a5e3d4bc527",
+      "object_type": "blob",
+      "path": "benchmark/framework/__init__.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "366f61ffb73ff05b9ae43ab73e5b8c53ef017491",
+      "object_type": "blob",
+      "path": "benchmark/framework/analysis.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "e57a09a9337bb1f8bd62b4a17f439b5ba0fd512f",
+      "object_type": "blob",
+      "path": "benchmark/framework/campaign.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "e928627c41663d48a092fe1ba39aa38abfb9aecc",
+      "object_type": "blob",
+      "path": "benchmark/framework/dual_host_telemetry.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "67fdcfe9eb202b2af6fdb1d549a40116be2051aa",
+      "object_type": "blob",
+      "path": "benchmark/framework/environment.py"
+    },
+    {
+      "mode": "100755",
+      "object_id": "ef10fc498440528cad60a7b0687146fc12e8f57c",
+      "object_type": "blob",
+      "path": "benchmark/framework/experiment.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "6fc0ba95340d1e0adce9a83a31db4f4bac59eb06",
+      "object_type": "blob",
+      "path": "benchmark/framework/final_freeze.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "a351f76ae801b50744fcfec48312867eeac14dab",
+      "object_type": "blob",
+      "path": "benchmark/framework/host_state.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "cd34cfe82c4d61c43a963569049bdca6ac79d6cc",
+      "object_type": "blob",
+      "path": "benchmark/framework/ids.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "26bf7c69fd4d654c8baa28dad35bd19788bb794b",
+      "object_type": "blob",
+      "path": "benchmark/framework/io_utils.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "0f8c1b557288ce7e4d36046a5747587ff5da8932",
+      "object_type": "blob",
+      "path": "benchmark/framework/lifecycle.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "b2d706a68e4f9fd5d9fdb758751b87424b41f2be",
+      "object_type": "blob",
+      "path": "benchmark/framework/loadgen_runtime.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "7d93a9671aafddd5acc191caba1359e2c6446b32",
+      "object_type": "blob",
+      "path": "benchmark/framework/manifest.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "2c48cb7f69ceded637c21d4e63da95ff9595e976",
+      "object_type": "blob",
+      "path": "benchmark/framework/network_evidence.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "14c20f07656a6f3beb0acc19f0d68029b21abcf4",
+      "object_type": "blob",
+      "path": "benchmark/framework/network_qualification.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "313d38eaed65dd9751884346aed55e9a4522523a",
+      "object_type": "blob",
+      "path": "benchmark/framework/paired_execution.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "7a08f1caa2769b8354899cd9183f4071b37a34c6",
+      "object_type": "blob",
+      "path": "benchmark/framework/provenance.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "3d9db011fbe9faf229d63bc50fe69a6ebb4cdfa3",
+      "object_type": "blob",
+      "path": "benchmark/framework/readme.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "a7a3ce7fb98e728cff51895fe672f2ccf7162b37",
+      "object_type": "blob",
+      "path": "benchmark/framework/results.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "f9449cca4c80b67612947e97a44d3a0e6d192776",
+      "object_type": "blob",
+      "path": "benchmark/framework/schedule.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "c308480fff5b6027eda705ae68ad0db467f28b44",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ee4ea2eb9084437a8ebe458dcbeb4c413dcdf3a4",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/campaign.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "066bdca36dbc0b8e82870cd0571b18385f68206b",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/corpus-manifest.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "f9ae08ad31f14984ee49fb260b368c3d30724371",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/coverage-manifest.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "3a0f5abcdcb69d0980318f6373cd8f53c2850713",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/dual-host-telemetry.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "5ddfeb07635ea2e5d6439f8624172e771fe3b4f8",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/final-freeze-manifest.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "cf29786813dcb4c61d8f8750711d87e3ac23b1e6",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/final-freeze-state.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "9e2c54418cd8714ffc06842fe0b685c5a6f9b9ca",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/final-freeze.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "3096c157946133d119c7224b8413c8cb0037c2e7",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/loadgen-runtime.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "46dbccda02eac77d0a3deb38be5db006c3b07e0a",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/manifest.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "cdcc59a7b24819d443d1f159248a206163d14790",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/measurement.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "05de8ce820058cd00ea217c9b8e7ca283f815500",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/network-envelope.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "269ae3cd31dd789c04ec06eb5a2b43ca9ddbfdda",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/network-evidence.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "5f977fc3265abbe3c1e688faaec16c1ec44d70bd",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/network-qualification.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "750118feeaca857618d98415e471038fa30b79e3",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/paired-execution-result.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "76e9372b1b18dc4c94b4157744f0f6f38904b224",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/paired-scientific-execution.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "7e6b534ecb473f68adcf83cfd74b9f11247dcefb",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/publication-bundle.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "883e31759158c0f29abee84761ea180c76a06456",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/result-integrity.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "e32ea1b6ef6eeab1f5a7067972c1e52d2a038f3e",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/result-manifest.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "2d8a7a973a591309f4b3a560ad81ceec61bb714a",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/schedule.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "fb10e2efb0747c5910bbf666c963810f9823288b",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/scientific-corpus.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "4a6ae942111cabddad53c690087e25fa001ad30c",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/scientific-profile.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "68d79819b648fcedd79dd5333bc5ce298c525774",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/state.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "2ef60ba6951c9ac8901fa37970edf13ab1e4ab23",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/telemetry-sample.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "86cf8da9063c3adab90acdf1a68379b8ac67cd17",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/transport-security.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "3281f4aa6791356ef0ec2c8493d76d2e5357aff5",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/workload-plan.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "51c938adb017fa82272008036462bdead566e196",
+      "object_type": "blob",
+      "path": "benchmark/framework/schemas/workload-planner.schema.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "3633522b92df5ca1e77c381bcbf5f8964bffc992",
+      "object_type": "blob",
+      "path": "benchmark/framework/scientific_corpus.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "c9454d1d6bc91e6ac912b81a51414c278d0755f4",
+      "object_type": "blob",
+      "path": "benchmark/framework/scientific_profiles.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "257d95f08dc36c88d9d63a75f9456a837a1c3021",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_analysis.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "c6b2edf9b47b980d265d84a7f5d3185c7ee0e3ef",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_campaign.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "358ed3c0b3a215eb397bc04bfb4b496c276c627b",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_dual_host_telemetry.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "bf61c3c1f0c246be168d4ced97bc98625d4447d9",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_final_freeze.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "97bd78d9a8bdc734118c815bbd0f06633b2b1882",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_framework.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "1efc59ac3a6e9f0f9ae90f8a8a77d60a4f67e0c5",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_host_state.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "e0790539df89a14bd94bcc3fbf768949c8cf84fa",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_http3.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "005dd8f6190276f101d0db0b9663480c64f75fe4",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_loadgen_runtime.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "160dcfed1c78db081d5d8185762b302fde8d0853",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_network_evidence.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "341b6c7b4c84ab307078ca8eb6f0de3970db178b",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_network_qualification.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "3a1fabf72f7918fdb623d3672f1cd967201671fb",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_paired_execution.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "590390be530739dbfce1e423a9d279ebd80d9bd4",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_preparation.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "44b3f8709b6e7ea992aef62879619585c2c520c0",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_results.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "5e3bd1f809c7fefaf5f045118b1c553a7b9bf800",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_scientific_corpus.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "a9e302488c678aa7b62014b025a0089fdacc8404",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_scientific_profiles.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "9bde13db37eba39e376b03542d2238885cf4dd92",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_transport_security.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "184068a536343f91bb6fb13555270f04349d3806",
+      "object_type": "blob",
+      "path": "benchmark/framework/tests/test_workload_planner.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "bab67b8e0d9dc7714adfc984573afc964af5aba8",
+      "object_type": "blob",
+      "path": "benchmark/framework/transport_security.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "e60cdc4e4b5fc519edde2275a5efd633f6086ef5",
+      "object_type": "blob",
+      "path": "benchmark/framework/validation.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "b65783462b6b54e15968e1c17438a8e4cea53bf1",
+      "object_type": "blob",
+      "path": "benchmark/framework/workload_planner.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "4f9c3523b610290249ceec6e2e7483a981353ab5",
+      "object_type": "blob",
+      "path": "benchmark/framework/workloads.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "7ba702e3a1791c3bd98f24f16ee087f6ce13d315",
+      "object_type": "blob",
+      "path": "benchmark/scientific-profiles/clas12-event-stream-v1.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "2751591c09f791bb949088bd7ca628ca9a4c2a8e",
+      "object_type": "blob",
+      "path": "benchmark/scientific-profiles/hacc-multifile-dataset-v1.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "be2c8b6c693bf300dcb68b40e2b2bf1600372d0f",
+      "object_type": "blob",
+      "path": "benchmark/scientific-profiles/lcls-detector-frame-v1.json"
+    },
+    {
+      "mode": "100644",
+      "object_id": "c8a2f1626a7804e18779eefe54beaf99a3a218eb",
+      "object_type": "blob",
+      "path": "benchmark/workloads/__init__.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "4956ab049673d735db1c1691f3091124cc596d46",
+      "object_type": "blob",
+      "path": "benchmark/workloads/http3/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "fdb07d5e690f5f4c28d706dfebc0935630ee3235",
+      "object_type": "blob",
+      "path": "benchmark/workloads/http3/__init__.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "bbe4f1c84146a52ab4c6d162f89760dfd5007ac2",
+      "object_type": "blob",
+      "path": "benchmark/workloads/http3/adapter.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "7f0591299a52ad18f61e1e2215688a3e4988a567",
+      "object_type": "blob",
+      "path": "docs/analysis.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "bbb86ad18d1bef7c60876d1d7741479638f7a63e",
+      "object_type": "blob",
+      "path": "docs/benchmark-methodology.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "f4d74d8e1d781a9e688b58ac2b7cf0c66ecbdd56",
+      "object_type": "blob",
+      "path": "docs/campaigns.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "179ea4a4bbcf5c9aa6e2c366962f236239ce64f2",
+      "object_type": "blob",
+      "path": "docs/environment-adapters.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "dff34c9bc33a52a6dd48e2b84c87936ac93dea05",
+      "object_type": "blob",
+      "path": "docs/experiment-lifecycle.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "34040a9cd2195bd3b6991460c245abecfa93e906",
+      "object_type": "blob",
+      "path": "docs/experiment-schema.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "d3ce36c732e04a213691fcb6b6f3616b5332a672",
+      "object_type": "blob",
+      "path": "docs/experimental-scope.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "433b59514885b1de12780c4d2907998fc0756444",
+      "object_type": "blob",
+      "path": "docs/http3-workload.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "d6c731b6d4b9d7d180f377516e4d706a8134c0e0",
+      "object_type": "blob",
+      "path": "docs/integration-model.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "cb74a67e80cb73d68d5d0ae722008b378985671f",
+      "object_type": "blob",
+      "path": "docs/r6.5.1-network-qualification.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "1e95a019e96ab0784a6026de8f347ad78ed3fdf7",
+      "object_type": "blob",
+      "path": "docs/r6.5.2-http3-loadgen-runtime.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "b9db5b56a08fda84397a3bfe473a430e060ad2e6",
+      "object_type": "blob",
+      "path": "docs/r6.5.3a-scientific-profile-registry.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "6354d343504a3da5af2a800f19c624a06af1eb48",
+      "object_type": "blob",
+      "path": "docs/r6.5.3c-network-evidence.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "92975ecc95cfe0d23fc7ddda22833957d0d0fcaa",
+      "object_type": "blob",
+      "path": "docs/r6.5.3d-scientific-corpus.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "cd8fd6922bc745e535694417884421b68d993829",
+      "object_type": "blob",
+      "path": "docs/r6.5.3e-http3-transport-security.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "888800fe4c5bfcb1d3858a84b17e413a9dbfe144",
+      "object_type": "blob",
+      "path": "docs/r6.5.3f-dual-host-telemetry.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "03ae4855762273260befe787bd3e27f49e6a9006",
+      "object_type": "blob",
+      "path": "docs/r6.5.3g-stock-workload-planner.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "498792b657800599854e54e80ea5bfa089cac711",
+      "object_type": "blob",
+      "path": "docs/r6.5.3h-final-freeze.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "aa6511d4a90eae31659e18c26e6d962344c455d1",
+      "object_type": "blob",
+      "path": "docs/r6.5.4-controlled-paired-scientific-execution.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "26ec9a610492832ca9560c45f9dfef6b6eb93104",
+      "object_type": "blob",
+      "path": "docs/reproducibility.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "7198427c819be2323d96bc7253a3832b21192968",
+      "object_type": "blob",
+      "path": "docs/topology.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "f7c056353f689f8563f6265a01d21c3ecce48502",
+      "object_type": "blob",
+      "path": "environments/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ac9534c2b9fc2e2b0133cd4a8c8db345063a048b",
+      "object_type": "blob",
+      "path": "environments/local/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "8f038508b15fc1380175c954c595124508bea476",
+      "object_type": "blob",
+      "path": "evidence/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "2ea315771d670478dade8677cbc8b57a67456990",
+      "object_type": "blob",
+      "path": "evidence/performance/c2.1-local-http3/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ef76bf78ef720e12886bd9a7d86cef03eb08877d",
+      "object_type": "blob",
+      "path": "evidence/performance/c2.1-local-http3/claim.yaml"
+    },
+    {
+      "mode": "100644",
+      "object_id": "be356b647772e261da1d463ea254bfb1ce339b43",
+      "object_type": "blob",
+      "path": "experiments/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "92f3736b429b5767a7e17e88b97fdeca587b9863",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/README.md"
+    },
+    {
+      "mode": "100755",
+      "object_id": "c6067d811210d5dd5bffbcf6fa72031be0081110",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/analysis/render_figures.py"
+    },
+    {
+      "mode": "100644",
+      "object_id": "e2fe229cba25a608f32e915075fd9357d57db6a4",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/figures/relative-throughput-delta.svg"
+    },
+    {
+      "mode": "100644",
+      "object_id": "4c55f30e565c3ed10953bef8aea8c4533109d840",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/figures/throughput-comparison.svg"
+    },
+    {
+      "mode": "100644",
+      "object_id": "9b64f933eb7e3413f87fee5efdc49773397c4139",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "871e98d70648d1cb9bfd7ce0c63cf7a227a6aa11",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/SHA256SUMS.txt"
+    },
+    {
+      "mode": "100644",
+      "object_id": "de2bbac08215db944689857540abf37de1d54295",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/configs/nginx-1worker.conf"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ce1b96e99e0cbd4c85531ce8890c0ccca35f3a62",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/configs/nginx-2worker.conf"
+    },
+    {
+      "mode": "100644",
+      "object_id": "e422e4725ffd7620becd3001a647d25093e43859",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/configs/nginx-4worker.conf"
+    },
+    {
+      "mode": "100644",
+      "object_id": "de2bbac08215db944689857540abf37de1d54295",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/configs/nginx.conf"
+    },
+    {
+      "mode": "100644",
+      "object_id": "294f4016d05bdd696670c4840f1f36a71f9239de",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/payloads/16k.bin"
+    },
+    {
+      "mode": "100644",
+      "object_id": "06d7405020018ddf3cacee90fd4af10487da3d20",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/payloads/1k.bin"
+    },
+    {
+      "mode": "100755",
+      "object_id": "dc03a12b2479ce5de8c89a9362cb6e7f72bde784",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/runners/run-ngi541-ab-2w.sh"
+    },
+    {
+      "mode": "100755",
+      "object_id": "66476c63a10f66483c9aa3fd327c1eb65806a2d7",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/runners/run-ngi541-ab-4w.sh"
+    },
+    {
+      "mode": "100755",
+      "object_id": "cc5f71649e47d658e3f1d7b1f73bf9bcffab3eff",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/runners/run-ngi541-ab-v2.sh"
+    },
+    {
+      "mode": "100755",
+      "object_id": "57597a940994f1d1beb599e078601051f5c06793",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/historical/runners/run-ngi541-ab.sh"
+    },
+    {
+      "mode": "100644",
+      "object_id": "a850f502a41dbef218df032fe4d002995599cf8c",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/manifest.yaml"
+    },
+    {
+      "mode": "100644",
+      "object_id": "9f5381fc3b7c91f4d167a1a1a6b20bf41c015784",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/processed/summary.csv"
+    },
+    {
+      "mode": "100644",
+      "object_id": "63d9ffb23c3e48dfad1d48dc0de4cbbc86754e56",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "510d61bd5658581b5117ff494ae8f7d7577bdfa3",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/audit/CMakeCache-release-avx2.txt"
+    },
+    {
+      "mode": "100644",
+      "object_id": "14d452bcb6c916b87e2ef456ee1d95247a9f5b13",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/audit/cmake-options-release-avx2.txt"
+    },
+    {
+      "mode": "100644",
+      "object_id": "b86dc165db7fa238a60a5986ed399c7c1fc8e650",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/audit/ngi541-diff-stat.txt"
+    },
+    {
+      "mode": "100644",
+      "object_id": "fe64fa92ab983dea33fb1f726277ec64d36d6fd6",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/audit/ngi541-working-tree.patch"
+    },
+    {
+      "mode": "100644",
+      "object_id": "d45d77c1b6cffde1f601d05eca7697b8ebdde85e",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/audit/nginx-build-flags.txt"
+    },
+    {
+      "mode": "100644",
+      "object_id": "e8ab8d60934d6efc29b8181d023c83f500e4b84c",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/audit/nginx-patch-sha256.txt"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ad53a36ed85a1ac04401f6581f5a197a32df104b",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/audit/runtime-release-avx2.sha256"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ce98fb0c2f7fa6c902d49ca17b818fcdc5542c14",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/audit/versions.env"
+    },
+    {
+      "mode": "100644",
+      "object_id": "302858ba87e30a7d2c858651e7b9fcef511137ff",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/runtime-sha256.txt"
+    },
+    {
+      "mode": "100644",
+      "object_id": "42f9720ba0e34c53fa675f4c59b1d5d9f558b2ca",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/provenance/source-identity.txt"
+    },
+    {
+      "mode": "100644",
+      "object_id": "13e6b9da947fd86f50f012f0e954a899dd9ddb8f",
+      "object_type": "blob",
+      "path": "experiments/c2.1-local-http3/raw/README.md"
+    },
+    {
+      "mode": "100644",
+      "object_id": "1017c1380eefd7744d0b6cd56a65d891bb12b86a",
+      "object_type": "blob",
+      "path": "integration/patches/nghttp2-1.69.0/0001-h2load-main-phase-stream-accounting.patch"
+    },
+    {
+      "mode": "100644",
+      "object_id": "f6fc356c121411085d800779dc838fc1b8a77316",
+      "object_type": "blob",
+      "path": "integration/patches/nginx-1.31.6/0001-ngi541-quic-crypto.patch"
+    },
+    {
+      "mode": "100644",
+      "object_id": "676a99e565e27cd927996a34e0c6ba237fe7ce5f",
+      "object_type": "blob",
+      "path": "integration/tests/nginx-tests/n2_ngi541_auth_failure.t"
+    },
+    {
+      "mode": "100644",
+      "object_id": "ce98fb0c2f7fa6c902d49ca17b818fcdc5542c14",
+      "object_type": "blob",
+      "path": "integration/versions/versions.env"
+    },
+    {
+      "mode": "100755",
+      "object_id": "44cad94158d858f4c31d49a020e88c72c7502611",
+      "object_type": "blob",
+      "path": "scripts/apply-patches.sh"
+    },
+    {
+      "mode": "100755",
+      "object_id": "930457436daff6de989c5f984d9a3a457e6d5de2",
+      "object_type": "blob",
+      "path": "scripts/build.sh"
+    },
+    {
+      "mode": "100755",
+      "object_id": "e2336b3ac10b71762a0cc7db7754720fbf29466c",
+      "object_type": "blob",
+      "path": "scripts/experiment.sh"
+    },
+    {
+      "mode": "100755",
+      "object_id": "2e1fdcdaba3c0133614b0567064b6469fe0c2d3c",
+      "object_type": "blob",
+      "path": "scripts/fetch-deps.sh"
+    },
+    {
+      "mode": "100755",
+      "object_id": "82843e6253ff3fb2409e5bfb5517f901b8902111",
+      "object_type": "blob",
+      "path": "scripts/test.sh"
+    }
+  ],
+  "ref": "r6.5.4.5-publication",
+  "schema_version": 1
+}

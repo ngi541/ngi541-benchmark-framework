@@ -1,0 +1,193 @@
+{
+  "entries": [
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": false,
+      "current_file_count": 18,
+      "current_total_bytes": 6293164,
+      "kind": "directory",
+      "path": "artifacts/results",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 8,
+      "current_total_bytes": 5333124,
+      "kind": "directory",
+      "path": "corpora/scientific",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": false,
+      "current_file_count": 1,
+      "current_total_bytes": 2508,
+      "kind": "file",
+      "path": "experiments/README.md",
+      "tracked_file_count_at_publication_tag": 1
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": false,
+      "current_file_count": 31,
+      "current_total_bytes": 206942,
+      "kind": "directory",
+      "path": "experiments/c2.1-local-http3",
+      "tracked_file_count_at_publication_tag": 30
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 8359,
+      "current_total_bytes": 464927,
+      "kind": "directory",
+      "path": "experiments/http3-local-20261009T024954Z-dcc17d",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 71,
+      "current_total_bytes": 15635083,
+      "kind": "directory",
+      "path": "experiments/http3-local-20261010T025311Z-09f95c",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 1952,
+      "current_total_bytes": 16135340,
+      "kind": "directory",
+      "path": "experiments/http3-local-20261010T030439Z-e9d1a1",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 3596,
+      "current_total_bytes": 455350773,
+      "kind": "directory",
+      "path": "experiments/r6.5.4",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 14,
+      "current_total_bytes": 39709,
+      "kind": "directory",
+      "path": "qualifications/final-freeze",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 78,
+      "current_total_bytes": 169571,
+      "kind": "directory",
+      "path": "qualifications/loadgen-runtime",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 164,
+      "current_total_bytes": 814523,
+      "kind": "directory",
+      "path": "qualifications/network",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 6,
+      "current_total_bytes": 8057,
+      "kind": "directory",
+      "path": "qualifications/network-evidence",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 800,
+      "current_total_bytes": 508671,
+      "kind": "directory",
+      "path": "qualifications/server-lifecycle",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 348,
+      "current_total_bytes": 194070,
+      "kind": "directory",
+      "path": "qualifications/server-lifecycle-sanity",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 43,
+      "current_total_bytes": 603016,
+      "kind": "directory",
+      "path": "qualifications/telemetry",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 2,
+      "current_total_bytes": 22658,
+      "kind": "directory",
+      "path": "qualifications/telemetry-window",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 81,
+      "current_total_bytes": 154152,
+      "kind": "directory",
+      "path": "qualifications/transport-security",
+      "tracked_file_count_at_publication_tag": 0
+    },
+    {
+      "artifact_inventory_present": false,
+      "artifact_inventory_sha256": null,
+      "contains_untracked_content": true,
+      "current_file_count": 697,
+      "current_total_bytes": 143485692,
+      "kind": "directory",
+      "path": "qualifications/workload-planner",
+      "tracked_file_count_at_publication_tag": 0
+    }
+  ],
+  "known_generated_namespaces": [
+    "artifacts",
+    "corpora",
+    "experiments",
+    "qualifications"
+  ],
+  "schema_version": 1,
+  "unexpected_untracked_paths": [],
+  "working_tree_ref": "r6.5.4.5-publication"
+}
