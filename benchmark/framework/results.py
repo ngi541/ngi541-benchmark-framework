@@ -120,7 +120,11 @@ def _resolve_under_repo(
     return candidate
 
 
-def _verify_inventory(root: Path) -> dict[str, Any]:
+def _verify_inventory(
+    root: Path,
+    *,
+    allowed_unrecorded: set[str] | None = None,
+) -> dict[str, Any]:
     inventory = root / "artifacts.sha256"
 
     _must(
@@ -174,6 +178,8 @@ def _verify_inventory(root: Path) -> dict[str, Any]:
 
         recorded[relative] = sha256
 
+    recorded_set = set(recorded)
+
     actual = {
         path.relative_to(root).as_posix()
         for path in root.rglob("*")
@@ -184,10 +190,35 @@ def _verify_inventory(root: Path) -> dict[str, Any]:
         )
     }
 
+    missing = sorted(
+        recorded_set - actual
+    )
+
     _must(
-        actual == set(recorded),
-        f"artifact inventory file set "
-        f"mismatch: {root}",
+        not missing,
+        "artifact inventory is missing "
+        "recorded files: "
+        + ", ".join(missing),
+    )
+
+    allowed = set(
+        allowed_unrecorded
+        or set()
+    )
+
+    unrecorded = sorted(
+        actual - recorded_set
+    )
+
+    unexpected = sorted(
+        set(unrecorded) - allowed
+    )
+
+    _must(
+        not unexpected,
+        "artifact inventory has "
+        "unexpected unrecorded files: "
+        + ", ".join(unexpected),
     )
 
     for relative, expected in recorded.items():
@@ -199,10 +230,23 @@ def _verify_inventory(root: Path) -> dict[str, Any]:
         )
 
     return {
-        "entry_count": len(recorded),
+        "semantics":
+            (
+                "recorded-files-sha256-with-"
+                "explicit-unrecorded-allowlist"
+                if allowed
+                else "exact-file-set-sha256"
+            ),
+        "recorded_entry_count":
+            len(recorded),
+        "unrecorded_files":
+            unrecorded,
+        "allowed_unrecorded_files":
+            sorted(allowed),
         "inventory_sha256":
             _sha256_file(inventory),
     }
+
 
 
 def _read_jsonl(
@@ -1789,9 +1833,46 @@ def _resolve_evidence_roots(
         f"is missing: {freeze_root}",
     )
 
-    _verify_inventory(
-        freeze_root
+    freeze_inventory = _verify_inventory(
+        freeze_root,
+        allowed_unrecorded={
+            "state.json",
+        },
     )
+
+    state = read_json(
+        freeze_root
+        / "state.json"
+    )
+
+    _must(
+        state.get("state")
+        == "COMPLETE",
+        "final-freeze historical "
+        "state is not COMPLETE",
+    )
+
+    freeze_definition = read_json(
+        freeze_root
+        / "definition.json"
+    )
+
+    if isinstance(
+        state.get(
+            "definition_sha256"
+        ),
+        str,
+    ):
+        _must(
+            state[
+                "definition_sha256"
+            ]
+            == _semantic_sha256(
+                freeze_definition
+            ),
+            "final-freeze state "
+            "definition SHA mismatch",
+        )
 
     manifest = read_json(
         freeze_root
@@ -1993,6 +2074,8 @@ def _resolve_evidence_roots(
                 manifest,
             "final_freeze_resolved_inputs":
                 resolved,
+            "final_freeze_inventory":
+                freeze_inventory,
             "input_records":
                 input_records,
         },
@@ -3077,6 +3160,10 @@ def build_results_artifact(
                 summary[
                     "freeze_sha256"
                 ],
+            "historical_inventory":
+                freeze_context[
+                    "final_freeze_inventory"
+                ],
         },
         "workload_plan": {
             "id":
@@ -3142,6 +3229,13 @@ def build_results_artifact(
                     "PASS",
                 **campaign[
                     "source_inventory"
+                ],
+            },
+            "final_freeze_historical_inventory": {
+                "status":
+                    "PASS",
+                **freeze_context[
+                    "final_freeze_inventory"
                 ],
             },
             "campaign_structure": {

@@ -14,6 +14,7 @@ from framework.results import (
     _semantic_sha256,
     _sha256_file,
     _strict_nominal_loadgen_samples,
+    _verify_inventory,
 )
 
 
@@ -273,6 +274,95 @@ class ResultsArtifactTests(unittest.TestCase):
                 ],
                 [102, 103, 104],
             )
+
+
+    def test_inventory_allows_only_explicit_historical_extra(
+        self,
+    ) -> None:
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            payload = root / "definition.json"
+            payload.write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+
+            state = root / "state.json"
+            state.write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+
+            inventory = root / "artifacts.sha256"
+            inventory.write_text(
+                (
+                    _sha256_file(payload)
+                    + "  definition.json\n"
+                ),
+                encoding="utf-8",
+            )
+
+            result = _verify_inventory(
+                root,
+                allowed_unrecorded={
+                    "state.json",
+                },
+            )
+
+            self.assertEqual(
+                result[
+                    "recorded_entry_count"
+                ],
+                1,
+            )
+
+            self.assertEqual(
+                result[
+                    "unrecorded_files"
+                ],
+                ["state.json"],
+            )
+
+            with self.assertRaises(Exception):
+                _verify_inventory(root)
+
+    def test_inventory_rejects_non_allowlisted_extra(
+        self,
+    ) -> None:
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            payload = root / "definition.json"
+            payload.write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+
+            extra = root / "unexpected.json"
+            extra.write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+
+            inventory = root / "artifacts.sha256"
+            inventory.write_text(
+                (
+                    _sha256_file(payload)
+                    + "  definition.json\n"
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(Exception):
+                _verify_inventory(
+                    root,
+                    allowed_unrecorded={
+                        "state.json",
+                    },
+                )
 
 
 if __name__ == "__main__":
