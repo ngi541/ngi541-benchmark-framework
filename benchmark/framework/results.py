@@ -2405,41 +2405,100 @@ def _csv_text(
     return buffer.getvalue()
 
 
-def _svg_delta_plot(
-    metric: str,
-    analysis: dict[str, Any],
+def _condition_display_label(
+    condition_id: str,
 ) -> str:
-
-    values = [
-        float(
-            pair[
-                "delta_percent_positive_favors_ngi541"
-            ][metric]
-        )
-        for pair
-        in analysis["pairs"]
-    ]
-
-    width = 900
-    height = 420
-
-    left = 70
-    right = 20
-    top = 35
-    bottom = 55
-
-    inner_width = (
-        width
-        - left
-        - right
+    match = re.fullmatch(
+        (
+            r"w(?P<workers>[14])-"
+            r"(?P<profile>"
+            r"clas12-event-stream|"
+            r"hacc-multifile-dataset|"
+            r"lcls-detector-frame"
+            r")-s(?P<target>50|80)"
+        ),
+        condition_id,
     )
 
-    inner_height = (
-        height
-        - top
-        - bottom
+    if match is None:
+        return condition_id
+
+    profile = {
+        "clas12-event-stream": "CLAS12",
+        "hacc-multifile-dataset": "HACC",
+        "lcls-detector-frame": "LCLS",
+    }[match.group("profile")]
+
+    workers = int(
+        match.group("workers")
     )
 
+    worker_label = (
+        "1 worker"
+        if workers == 1
+        else f"{workers} workers"
+    )
+
+    return (
+        f"{worker_label} · "
+        f"{profile} · "
+        f"{match.group('target')} Mb/s"
+    )
+
+
+def _metric_figure_metadata(
+    metric: str,
+) -> dict[str, str]:
+    metadata = {
+        "application_goodput_mbps": {
+            "title":
+                "Application goodput",
+            "subtitle":
+                (
+                    "Median paired change "
+                    "across 4 repetitions "
+                    "per condition"
+                ),
+        },
+        "dut_process_cpu_seconds_per_gib": {
+            "title":
+                (
+                    "DUT process CPU cost "
+                    "per delivered GiB"
+                ),
+            "subtitle":
+                (
+                    "Median paired efficiency "
+                    "change across 4 repetitions "
+                    "per condition"
+                ),
+        },
+        "dut_estimated_energy_j_per_gib": {
+            "title":
+                (
+                    "Estimated DUT energy "
+                    "per delivered GiB"
+                ),
+            "subtitle":
+                (
+                    "Median paired energy "
+                    "change across 4 repetitions "
+                    "per condition"
+                ),
+        },
+    }
+
+    _must(
+        metric in metadata,
+        f"unsupported publication figure metric: {metric}",
+    )
+
+    return metadata[metric]
+
+
+def _nice_percent_ticks(
+    values: list[float],
+) -> list[float]:
     low = min(
         min(values),
         0.0,
@@ -2453,112 +2512,383 @@ def _svg_delta_plot(
     if math.isclose(
         low,
         high,
+        rel_tol=0.0,
+        abs_tol=1e-12,
     ):
         low -= 1.0
         high += 1.0
 
-    padding = (
-        high - low
-    ) * 0.08
+    span = high - low
+    raw_step = span / 6.0
 
-    low -= padding
-    high += padding
+    magnitude = 10.0 ** math.floor(
+        math.log10(raw_step)
+    )
+
+    normalized = raw_step / magnitude
+
+    if normalized <= 1.0:
+        nice = 1.0
+    elif normalized <= 2.0:
+        nice = 2.0
+    elif normalized <= 5.0:
+        nice = 5.0
+    else:
+        nice = 10.0
+
+    step = nice * magnitude
+
+    tick_low = math.floor(
+        low / step
+    ) * step
+
+    tick_high = math.ceil(
+        high / step
+    ) * step
+
+    ticks: list[float] = []
+    value = tick_low
+
+    while value <= (
+        tick_high
+        + step * 0.5
+    ):
+        if abs(value) < (
+            step * 1e-9
+        ):
+            value = 0.0
+
+        ticks.append(value)
+        value += step
+
+    return ticks
+
+
+def _svg_condition_delta_plot(
+    metric: str,
+    analysis: dict[str, Any],
+) -> str:
+
+    metadata = (
+        _metric_figure_metadata(
+            metric
+        )
+    )
+
+    rows = []
+
+    for condition in analysis[
+        "conditions"
+    ]:
+        stats = condition[
+            "metrics"
+        ][metric]
+
+        rows.append(
+            {
+                "condition_id":
+                    condition[
+                        "condition_id"
+                    ],
+                "label":
+                    _condition_display_label(
+                        condition[
+                            "condition_id"
+                        ]
+                    ),
+                "median":
+                    float(
+                        stats[
+                            "median_delta_percent"
+                        ]
+                    ),
+                "ngi541_wins":
+                    int(
+                        stats[
+                            "ngi541_pair_wins"
+                        ]
+                    ),
+                "pair_count":
+                    int(
+                        stats[
+                            "pair_count"
+                        ]
+                    ),
+            }
+        )
+
+    _must(
+        len(rows)
+        == EXPECTED_CONDITIONS,
+        "publication figure condition "
+        "count mismatch",
+    )
+
+    values = [
+        row["median"]
+        for row in rows
+    ]
+
+    ticks = _nice_percent_ticks(
+        values
+    )
+
+    x_min = ticks[0]
+    x_max = ticks[-1]
+
+    width = 1260
+    height = 760
+
+    left = 300
+    right = 190
+    top = 125
+    bottom = 105
+
+    inner_width = (
+        width
+        - left
+        - right
+    )
+
+    inner_height = (
+        height
+        - top
+        - bottom
+    )
+
+    row_gap = (
+        inner_height
+        / len(rows)
+    )
 
     def x_position(
-        index: int,
+        value: float,
     ) -> float:
         return (
             left
             + (
-                index - 1
+                value - x_min
             )
-            / max(
-                1,
-                len(values) - 1,
+            / (
+                x_max - x_min
             )
             * inner_width
         )
 
-    def y_position(
-        value: float,
-    ) -> float:
-        return (
-            top
-            + (
-                high - value
-            )
-            / (
-                high - low
-            )
-            * inner_height
-        )
-
-    circles = "\n".join(
-        (
-            '<circle '
-            f'cx="{x_position(index):.2f}" '
-            f'cy="{y_position(value):.2f}" '
-            'r="3" />'
-        )
-        for index, value
-        in enumerate(
-            values,
-            start=1,
-        )
-    )
-
-    zero = y_position(
+    zero_x = x_position(
         0.0
     )
 
-    title = metric.replace(
-        "_",
-        " ",
+    tick_markup = []
+
+    for tick in ticks:
+        x = x_position(
+            tick
+        )
+
+        tick_markup.append(
+            (
+                '<line '
+                f'x1="{x:.2f}" '
+                f'y1="{top}" '
+                f'x2="{x:.2f}" '
+                f'y2="{height-bottom}" '
+                'stroke="#e3e3e3" '
+                'stroke-width="1"/>'
+            )
+        )
+
+        tick_markup.append(
+            (
+                '<text '
+                f'x="{x:.2f}" '
+                f'y="{height-bottom+28}" '
+                'text-anchor="middle" '
+                'font-family="sans-serif" '
+                'font-size="13" '
+                'fill="#222">'
+                f'{tick:+g}%'
+                '</text>'
+            )
+        )
+
+    row_markup = []
+
+    for index, row in enumerate(
+        rows
+    ):
+        y = (
+            top
+            + (
+                index
+                + 0.5
+            )
+            * row_gap
+        )
+
+        x = x_position(
+            row["median"]
+        )
+
+        text_anchor = (
+            "start"
+            if row["median"] >= 0
+            else "end"
+        )
+
+        value_x = (
+            x + 12
+            if row["median"] >= 0
+            else x - 12
+        )
+
+        row_markup.append(
+            (
+                '<line '
+                f'x1="{left}" '
+                f'y1="{y:.2f}" '
+                f'x2="{width-right}" '
+                f'y2="{y:.2f}" '
+                'stroke="#f0f0f0" '
+                'stroke-width="1"/>'
+            )
+        )
+
+        row_markup.append(
+            (
+                '<text '
+                f'x="{left-18}" '
+                f'y="{y+5:.2f}" '
+                'text-anchor="end" '
+                'font-family="sans-serif" '
+                'font-size="14" '
+                'fill="#111">'
+                f'{row["label"]}'
+                '</text>'
+            )
+        )
+
+        row_markup.append(
+            (
+                '<line '
+                f'x1="{zero_x:.2f}" '
+                f'y1="{y:.2f}" '
+                f'x2="{x:.2f}" '
+                f'y2="{y:.2f}" '
+                'stroke="#666" '
+                'stroke-width="2"/>'
+            )
+        )
+
+        row_markup.append(
+            (
+                '<circle '
+                f'cx="{x:.2f}" '
+                f'cy="{y:.2f}" '
+                'r="6" '
+                'fill="#111"/>'
+            )
+        )
+
+        row_markup.append(
+            (
+                '<text '
+                f'x="{value_x:.2f}" '
+                f'y="{y-8:.2f}" '
+                f'text-anchor="{text_anchor}" '
+                'font-family="sans-serif" '
+                'font-size="12" '
+                'font-weight="600" '
+                'fill="#111">'
+                f'{row["median"]:+.2f}%'
+                '</text>'
+            )
+        )
+
+        row_markup.append(
+            (
+                '<text '
+                f'x="{width-right+24}" '
+                f'y="{y+5:.2f}" '
+                'text-anchor="start" '
+                'font-family="sans-serif" '
+                'font-size="12" '
+                'fill="#333">'
+                f'NGI541-direct wins '
+                f'{row["ngi541_wins"]}/'
+                f'{row["pair_count"]}'
+                '</text>'
+            )
+        )
+
+    overall_values = [
+        float(
+            pair[
+                "delta_percent_positive_favors_ngi541"
+            ][metric]
+        )
+        for pair
+        in analysis["pairs"]
+    ]
+
+    overall_median = statistics.median(
+        overall_values
     )
 
     return (
-        '<?xml version="1.0" '
-        'encoding="UTF-8"?>\n'
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
         f'<svg xmlns="http://www.w3.org/2000/svg" '
-        f'width="{width}" '
-        f'height="{height}" '
+        f'width="{width}" height="{height}" '
         f'viewBox="0 0 {width} {height}">\n'
-        '<rect width="100%" '
-        'height="100%" '
-        'fill="white"/>\n'
-        '<g stroke="black" '
-        'fill="none" '
-        'stroke-width="1">\n'
-        f'<line x1="{left}" '
-        f'y1="{top}" '
-        f'x2="{left}" '
-        f'y2="{height-bottom}"/>\n'
-        f'<line x1="{left}" '
-        f'y1="{zero:.2f}" '
-        f'x2="{width-right}" '
-        f'y2="{zero:.2f}" '
-        'stroke-dasharray="5 5"/>\n'
-        '</g>\n'
-        '<g fill="black">\n'
-        f'<text x="{width/2:.0f}" '
-        'y="22" '
-        'text-anchor="middle" '
-        'font-family="sans-serif" '
-        'font-size="14">'
-        f'{title}: paired delta '
-        '(positive favors ngi541-direct)'
+        '<rect width="100%" height="100%" fill="white"/>\n'
+        f'<text x="{left}" y="40" '
+        'font-family="sans-serif" font-size="24" '
+        'font-weight="700" fill="#111">'
+        f'{metadata["title"]}'
         '</text>\n'
-        f'<text x="{width/2:.0f}" '
-        f'y="{height-12}" '
-        'text-anchor="middle" '
-        'font-family="sans-serif" '
-        'font-size="12">'
-        'pair index'
+        f'<text x="{left}" y="69" '
+        'font-family="sans-serif" font-size="15" '
+        'fill="#444">'
+        f'{metadata["subtitle"]}; '
+        'positive values favor NGI541-direct'
         '</text>\n'
-        f'{circles}\n'
-        '</g>\n'
+        f'<text x="{left}" y="94" '
+        'font-family="sans-serif" font-size="14" '
+        'font-weight="600" fill="#222">'
+        f'Overall median across 48 pairs: '
+        f'{overall_median:+.3f}%'
+        '</text>\n'
+        + "\n".join(tick_markup)
+        + "\n"
+        '<line '
+        f'x1="{zero_x:.2f}" y1="{top-12}" '
+        f'x2="{zero_x:.2f}" y2="{height-bottom}" '
+        'stroke="#111" stroke-width="1.5" '
+        'stroke-dasharray="6 5"/>\n'
+        '<text '
+        f'x="{zero_x+7:.2f}" y="{top-18}" '
+        'font-family="sans-serif" font-size="12" '
+        'fill="#333">'
+        '0% = no difference'
+        '</text>\n'
+        + "\n".join(row_markup)
+        + "\n"
+        f'<text x="{left + inner_width/2:.2f}" '
+        f'y="{height-48}" text-anchor="middle" '
+        'font-family="sans-serif" font-size="14" '
+        'font-weight="600" fill="#111">'
+        'Median paired change vs stock (%)'
+        '</text>\n'
+        f'<text x="{left}" y="{height-18}" '
+        'font-family="sans-serif" font-size="12" '
+        'fill="#555">'
+        'Each marker is the condition median of 4 paired repetitions. '
+        'All 48 valid pairs are retained; no outlier deletion. '
+        'Pair-level values are available in tables/pair-results.csv.'
+        '</text>\n'
         '</svg>\n'
     )
+
 
 
 def _deterministic_tar_gz(
@@ -2809,29 +3139,74 @@ stock/direct balance
 """
 
 
+def _publication_bundle_record(
+    *,
+    result_id: str,
+    generator_commit: str,
+    results_archive_sha256: str,
+    evidence_archive_sha256: str,
+    sha256sums_sha256: str,
+) -> dict[str, Any]:
+
+    identity = {
+        "schema_version": 1,
+        "scientific_result_id":
+            result_id,
+        "generator_commit":
+            generator_commit,
+        "results_archive_sha256":
+            results_archive_sha256,
+        "evidence_archive_sha256":
+            evidence_archive_sha256,
+        "sha256sums_sha256":
+            sha256sums_sha256,
+    }
+
+    content_sha256 = (
+        _semantic_sha256(
+            identity
+        )
+    )
+
+    return {
+        **identity,
+        "bundle_content_sha256":
+            content_sha256,
+        "bundle_id":
+            (
+                f"{result_id}-pub-"
+                f"{content_sha256[:12]}"
+            ),
+    }
+
+
 def _publication_readme(
     result_id: str,
 ) -> str:
 
-    return f"""# NGI541 scientific result artifact
+    return (
+        f"# NGI541 scientific result artifact\n\n"
+        f"Scientific result: `{result_id}`\n\n"
+        "Files:\n\n"
+        "- `bundle.json` — content-addressed publication package identity.\n"
+        "- `results.tar.gz` — compact result, tables, figures, methodology, integrity and provenance.\n"
+        "- `evidence.tar.gz` — source experiment plus the frozen qualification/evidence dependency closure.\n"
+        "- `SHA256SUMS` — SHA-256 checksums for the two archives.\n\n"
+        "`manifest.yaml` at the artifact root is the canonical scientific-result "
+        "contract. The publication package is independently identified by "
+        "`publication/bundle.json`, whose ID is derived from the archive checksums "
+        "and the exact result-generator commit.\n\n"
+        "The manifest is emitted as YAML-1.2-compatible JSON so publication "
+        "generation requires no PyYAML dependency.\n"
+    )
 
-Artifact: `{result_id}`
-
-Files:
-
-- `results.tar.gz` — compact result, tables, figures, methodology, integrity and provenance.
-- `evidence.tar.gz` — source experiment plus the frozen qualification/evidence dependency closure.
-- `SHA256SUMS` — SHA-256 checksums for the two archives.
-
-`manifest.yaml` at the artifact root is the canonical contract.  It is emitted
-as YAML-1.2-compatible JSON so publication generation requires no PyYAML
-dependency.
-"""
 
 
 def _existing_result(
     root: Path,
     source_experiment_id: str,
+    *,
+    expected_generator_commit: str,
 ) -> dict[str, Any]:
 
     _verify_inventory(root)
@@ -2849,6 +3224,25 @@ def _existing_result(
         == source_experiment_id,
         "existing result artifact "
         "source mismatch",
+    )
+
+    existing_generator_commit = (
+        provenance.get(
+            "generator_software",
+            {},
+        ).get("commit")
+    )
+
+    _must(
+        existing_generator_commit
+        == expected_generator_commit,
+        (
+            "existing result artifact was "
+            "generated by a different "
+            "generator commit; remove only "
+            "the derived artifacts/results "
+            "directory and regenerate"
+        ),
     )
 
     manifest = json.loads(
@@ -2951,6 +3345,12 @@ def build_results_artifact(
         lifecycle_root=lifecycle_root,
     )
 
+    generator_source = (
+        _generator_source(
+            repo_root
+        )
+    )
+
     output_root.mkdir(
         parents=True,
         exist_ok=True,
@@ -2967,6 +3367,11 @@ def build_results_artifact(
             str(
                 summary[
                     "experiment_id"
+                ]
+            ),
+            expected_generator_commit=(
+                generator_source[
+                    "commit"
                 ]
             ),
         )
@@ -3021,12 +3426,6 @@ def build_results_artifact(
 
     execution_source = (
         _execution_source(
-            repo_root
-        )
-    )
-
-    generator_source = (
-        _generator_source(
             repo_root
         )
     )
@@ -3375,6 +3774,8 @@ def build_results_artifact(
         "claims":
             results["claims"],
         "publication": {
+            "bundle_manifest":
+                "publication/bundle.json",
             "results_archive":
                 "publication/results.tar.gz",
             "evidence_archive":
@@ -3441,7 +3842,7 @@ def build_results_artifact(
         temp
         / "figures"
         / "goodput-delta.svg",
-        _svg_delta_plot(
+        _svg_condition_delta_plot(
             "application_goodput_mbps",
             campaign[
                 "analysis"
@@ -3453,7 +3854,7 @@ def build_results_artifact(
         temp
         / "figures"
         / "paired-cpu-delta.svg",
-        _svg_delta_plot(
+        _svg_condition_delta_plot(
             "dut_process_cpu_seconds_per_gib",
             campaign[
                 "analysis"
@@ -3465,7 +3866,7 @@ def build_results_artifact(
         temp
         / "figures"
         / "energy-delta.svg",
-        _svg_delta_plot(
+        _svg_condition_delta_plot(
             "dut_estimated_energy_j_per_gib",
             campaign[
                 "analysis"
@@ -3619,6 +4020,37 @@ def build_results_artifact(
             f"{evidence_archive_sha}  "
             "evidence.tar.gz\n"
         ),
+    )
+
+    sha256sums_sha = _sha256_file(
+        temp
+        / "publication"
+        / "SHA256SUMS"
+    )
+
+    bundle = _publication_bundle_record(
+        result_id=result_id,
+        generator_commit=(
+            generator_source[
+                "commit"
+            ]
+        ),
+        results_archive_sha256=(
+            results_archive_sha
+        ),
+        evidence_archive_sha256=(
+            evidence_archive_sha
+        ),
+        sha256sums_sha256=(
+            sha256sums_sha
+        ),
+    )
+
+    atomic_write_json(
+        temp
+        / "publication"
+        / "bundle.json",
+        bundle,
     )
 
     _write_inventory(

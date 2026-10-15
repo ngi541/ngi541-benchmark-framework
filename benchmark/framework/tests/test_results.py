@@ -7,13 +7,16 @@ from pathlib import Path
 
 from framework.results import (
     _attempt_count,
+    _condition_display_label,
     _deterministic_tar_gz,
     _manifest_yaml_text,
     _metric_summary,
+    _publication_bundle_record,
     _result_id,
     _semantic_sha256,
     _sha256_file,
     _strict_nominal_loadgen_samples,
+    _svg_condition_delta_plot,
     _verify_inventory,
 )
 
@@ -363,6 +366,124 @@ class ResultsArtifactTests(unittest.TestCase):
                         "state.json",
                     },
                 )
+
+
+    def test_condition_display_label_is_human_readable(
+        self,
+    ) -> None:
+
+        self.assertEqual(
+            _condition_display_label(
+                "w4-hacc-multifile-dataset-s80"
+            ),
+            "4 workers · HACC · 80 Mb/s",
+        )
+
+    def test_publication_bundle_identity_is_content_addressed(
+        self,
+    ) -> None:
+
+        first = _publication_bundle_record(
+            result_id="result-x",
+            generator_commit="a" * 40,
+            results_archive_sha256="b" * 64,
+            evidence_archive_sha256="c" * 64,
+            sha256sums_sha256="d" * 64,
+        )
+
+        second = _publication_bundle_record(
+            result_id="result-x",
+            generator_commit="a" * 40,
+            results_archive_sha256="b" * 64,
+            evidence_archive_sha256="c" * 64,
+            sha256sums_sha256="d" * 64,
+        )
+
+        self.assertEqual(
+            first,
+            second,
+        )
+
+        changed = _publication_bundle_record(
+            result_id="result-x",
+            generator_commit="a" * 40,
+            results_archive_sha256="e" * 64,
+            evidence_archive_sha256="c" * 64,
+            sha256sums_sha256="d" * 64,
+        )
+
+        self.assertNotEqual(
+            first["bundle_id"],
+            changed["bundle_id"],
+        )
+
+    def test_condition_figure_explains_axes_and_zero_line(
+        self,
+    ) -> None:
+
+        conditions = []
+
+        for index in range(12):
+            condition_id = (
+                "w1-clas12-event-stream-s50"
+                if index == 0
+                else f"condition-{index:02d}"
+            )
+
+            conditions.append(
+                {
+                    "condition_id":
+                        condition_id,
+                    "metrics": {
+                        "application_goodput_mbps": {
+                            "pair_count": 4,
+                            "median_delta_percent": 0.25,
+                            "ngi541_pair_wins": 2,
+                            "stock_pair_wins": 2,
+                            "ties": 0,
+                        }
+                    },
+                }
+            )
+
+        pairs = [
+            {
+                "delta_percent_positive_favors_ngi541": {
+                    "application_goodput_mbps": 0.25,
+                }
+            }
+            for _ in range(48)
+        ]
+
+        svg = _svg_condition_delta_plot(
+            "application_goodput_mbps",
+            {
+                "conditions":
+                    conditions,
+                "pairs":
+                    pairs,
+            },
+        )
+
+        self.assertIn(
+            "Median paired change vs stock (%)",
+            svg,
+        )
+
+        self.assertIn(
+            "0% = no difference",
+            svg,
+        )
+
+        self.assertIn(
+            "1 worker · CLAS12 · 50 Mb/s",
+            svg,
+        )
+
+        self.assertIn(
+            "NGI541-direct wins 2/4",
+            svg,
+        )
 
 
 if __name__ == "__main__":

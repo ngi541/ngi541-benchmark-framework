@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/publication-bundle.schema.json",
+  "title": "NGI541 publication bundle identity",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "scientific_result_id",
+    "generator_commit",
+    "results_archive_sha256",
+    "evidence_archive_sha256",
+    "sha256sums_sha256",
+    "bundle_content_sha256",
+    "bundle_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "scientific_result_id": {
+      "type": "string"
+    },
+    "generator_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40,64}$"
+    },
+    "results_archive_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "evidence_archive_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sha256sums_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "bundle_content_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "bundle_id": {
+      "type": "string"
+    }
+  }
+}

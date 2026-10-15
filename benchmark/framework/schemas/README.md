@@ -101,3 +101,4 @@ concurrency, worker, coverage or target selection.
 
 - `result-manifest.schema.json` — canonical publication-level scientific result contract.
 - `result-integrity.schema.json` — fail-closed publication integrity and diagnostic record.
+- `publication-bundle.schema.json` — content-addressed identity for the concrete publication package.
