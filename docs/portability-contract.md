@@ -1,84 +1,66 @@
 # Portability contract
 
-This document defines the post-R6.5.4.5 portability boundary for future NGI541 experiments.
+NGI541 benchmark semantics and deployment identity are separate contracts.
 
-The R6.5.4.5 execution and publication artifacts remain immutable. Historical paths containing `pi`, `mac`, `local`, or other host/provider names are provenance and are not renamed.
+## Scientific definition
 
-## Separation of identities
+The scientific definition contains only experiment semantics:
 
-Future experiment infrastructure separates three different concepts.
+- workload and variants;
+- parameters and conditions;
+- comparison and scheduling policy;
+- measurement controls;
+- validity rules;
+- analysis policy.
 
-### Scientific definition
+Scientific identity must exclude:
 
-The scientific definition contains benchmark semantics:
-
-- workload;
-- variants;
-- parameters;
-- explicit conditions;
-- comparison policy;
-- scheduling policy;
-- measurement-control policy.
-
-Its identity excludes:
-
-- deployment provider;
-- host names;
+- provider names;
+- machine names;
 - SSH targets;
 - CloudLab identifiers;
-- hardware inventory;
-- aliases.
+- local absolute paths;
+- hardware inventory.
 
-`benchmark/framework/experiment_identity.py` provides a deterministic scientific projection, SHA-256 identity, and host-neutral definition ID.
+`benchmark/framework/experiment_identity.py` computes the provider-independent
+scientific identity.
 
-### Deployment
+## Deployment
 
-A deployment describes where and how a scientific definition is executed.
-
-The canonical roles are:
+A deployment binds the canonical roles:
 
 ```text
 dut
 loadgen
 ```
 
-A deployment assigns each role exactly once to a node. The same node may hold both roles for single-host development.
+to concrete nodes and access methods.
 
-Provider is deployment metadata. Examples include `local`, `baremetal`, and `cloudlab`. Access mode is separate from provider and currently supports `local` and `ssh`.
+Provider is deployment metadata. Hardware, operating-system, network, runtime,
+and toolchain details become execution provenance.
 
-`benchmark/framework/deployment.py` validates the deployment contract.
+`benchmark/framework/deployment.py` validates this boundary.
 
-### Execution instance
+## Execution instance
 
-An execution instance is one concrete run of a scientific definition on a realized deployment.
+An execution instance is a concrete realization of a scientific definition on
+a deployment.
 
-Execution provenance must retain the full deployment definition and hardware/software inventory. It must not promote provider or host names into the scientific definition identity.
+Generated experiment directories, qualification outputs, deterministic corpus
+materializations, and publication bundles are runtime/research data. They are
+not part of the source repository.
 
-## P1 scope
+## Canonical protocol
 
-Portability P1 is deliberately additive.
+The accepted paired HTTP/3 scientific methodology is:
 
-It adds:
+```text
+benchmark/protocols/http3-paired-r6.5.4.5.json
+```
 
-- the provider-independent scientific identity contract;
-- the portable deployment contract;
-- a canonical local single-host deployment descriptor;
-- tests that freeze the identity/deployment boundary.
+It is provider-neutral and contains no host binding.
 
-P1 does not change:
-
-- historical R6.5.4.5 configs;
-- historical experiment/result identifiers;
-- the existing legacy `--environment` execution path;
-- accepted R6.5.4.5 evidence;
-- publication artifacts.
-
-Runtime wiring of the new deployment contract is a later milestone. That migration must preserve compatibility with historical experiment directories while ensuring new canonical executions do not encode provider names in scientific identity.
-
-## P2 runtime wiring
-
-Portable generic experiments may now be created with `--deployment <definition.json>` instead of the legacy `--environment` selector. The resulting experiment ID uses the provider-independent scientific identity hash rather than an environment/provider slug.
-
-The legacy `--environment` path remains supported without changing historical experiment IDs. P2 realizes the canonical local single-host deployment. Non-local providers fail closed until a real adapter exists.
-
-The accepted R6.5.4.5 methodology is also projected into `benchmark/protocols/http3-paired-r6.5.4.5.json`, which contains measurement and analysis semantics but no deployment binding. Historical R6.5.4.5 configs remain unchanged provenance.
+The source repository keeps only code and active definitions required to
+reproduce the methodology. Superseded milestone snapshots, compatibility
+layouts, and historical local experiment trees are intentionally not retained
+on `main`; Git history and release tags provide repository history.

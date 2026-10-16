@@ -1,26 +1,21 @@
 # Downloaded upstream sources
-src/
+/src/
 
-# Local installations / build output
-install/
-build/
-work/
+# Local build/install/work state
+/build/
+/install/
+/work/
 
-# Logs and temporary files
-*.log
-.DS_Store
+# Generated scientific/research data
+/experiments/
+/qualifications/
+/corpora/
+/artifacts/
 
+# Python/macOS/editor noise
 __pycache__/
 *.py[cod]
+.DS_Store
 
-/build/r5.4-http3/
-
-# Experiment logs are preserved evidence
-!experiments/**/*.log
-
-# Ephemeral execution runtime:
-# copied binaries/libraries and generated TLS key/certificate
-experiments/*/execution/runtime/
-
-# Derived publication artifacts
-/artifacts/
+# Logs
+*.log

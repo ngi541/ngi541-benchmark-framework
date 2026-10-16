@@ -1,17 +1,20 @@
 # Config-driven campaigns
 
-R5.6 adds a resumable campaign command for full experiment automation.
+The `campaign` command drives a versioned experiment definition through the
+framework lifecycle without bypassing any validation or provenance step.
 
 ```bash
 ./scripts/experiment.sh campaign \
-  --config benchmark/configs/c2.2-local-http3.json
+  --config <campaign-config.json>
 ```
 
-A campaign definition is a version-controlled research artifact. It contains the fixed workload parameters, an explicit ordered condition matrix, repetitions, comparison mode, exact runtime artifact SHA-256 values, and source requirements.
+A campaign definition is a research artifact. It contains the fixed workload
+parameters, explicit ordered conditions, repetitions, comparison mode, runtime
+artifact identities, and source requirements required by that campaign.
 
 ## Lifecycle
 
-The campaign command drives the existing lifecycle rather than bypassing it:
+The orchestrator advances only through legal lifecycle transitions:
 
 ```text
 create
@@ -25,82 +28,83 @@ create
   -> COMPLETE
 ```
 
-Every underlying artifact remains the same artifact produced by the manual commands. The orchestrator only selects the next legal stage.
+The campaign command does not replace the underlying lifecycle artifacts. It
+only determines the next valid stage.
 
 ## Resume semantics
 
-The normalized campaign definition is hashed with SHA-256 and snapshotted as `config/campaign.json` inside the experiment. Re-running the same command searches for an experiment with the same campaign name and definition hash.
+The normalized campaign definition is hashed with SHA-256 and snapshotted as
+`config/campaign.json` inside the generated experiment instance.
+
+Re-running the same campaign definition follows these rules:
 
 - exactly one incomplete match: resume it;
 - an exact COMPLETE match: validate it and return without creating a duplicate;
 - multiple incomplete matches: fail and require `--experiment-id`;
-- an incomplete experiment with the same name but a different definition: fail to prevent silent config drift;
-- `--new`: intentionally create a new instance of the same campaign.
+- same campaign name with a different definition: fail to prevent silent drift;
+- `--new`: intentionally create a distinct execution instance.
 
 Examples:
 
 ```bash
 # Start or automatically resume.
 ./scripts/experiment.sh campaign \
-  --config benchmark/configs/c2.2-local-http3.json
+  --config <campaign-config.json>
 
-# Resume an exact experiment explicitly.
+# Resume one exact experiment explicitly.
 ./scripts/experiment.sh campaign \
-  --config benchmark/configs/c2.2-local-http3.json \
-  --experiment-id http3-local-20261009T050000Z-aabbcc
+  --config <campaign-config.json> \
+  --experiment-id <experiment-id>
 
-# Intentionally repeat a completed campaign.
+# Intentionally create another instance.
 ./scripts/experiment.sh campaign \
-  --config benchmark/configs/c2.2-local-http3.json \
+  --config <campaign-config.json> \
   --new
 ```
 
-If the user interrupts execution, the HTTP/3 executor transitions `RUNNING -> ABORTED`. The next campaign invocation resumes the immutable schedule and skips runs with an already valid attempt. Failed attempts remain append-only raw evidence.
-
-A run failure is not retried automatically inside the same invocation. The campaign stops for inspection. A later explicit campaign invocation resumes from the recorded FAILED stage, preserving the anti-selection-bias rule.
+A run failure is not automatically retried inside the same invocation.
+Failed attempts remain append-only execution evidence. A later explicit resume
+continues according to the frozen schedule and validity rules.
 
 ## Framework identity after sealing
 
-For an active sealed campaign, resume is refused if the current `ngi541-nginx` Git commit differs from the framework commit sealed in `manifest.json`. This prevents a campaign from silently executing or analyzing with a different framework implementation.
+For an active sealed campaign, resume is refused when the current framework
+identity differs from the identity sealed into the experiment manifest. This
+prevents execution or analysis from silently continuing with a different
+framework implementation.
 
 ## Explicit conditions
 
-`experiment.conditions` is an ordered list of exact workload conditions, not a Cartesian product. Fixed parameters live in `experiment.parameters`. A parameter name may not appear in both places.
+`experiment.conditions` is an ordered list of exact workload conditions, not a
+Cartesian product. Fixed parameters live in `experiment.parameters`. A
+parameter name must not appear in both places.
 
-For C2.2:
-
-```text
-16 KiB  1w/1c
-16 KiB  2w/8c
-16 KiB  2w/16c
-16 KiB  4w/16c
-16 KiB  4w/32c
- 1 KiB  2w/16c
-```
-
-With 10 repetitions and two paired variants this resolves to exactly 120 scheduled runs.
+This distinction is important for controlled paired experiments because the
+condition set is part of the frozen scientific definition.
 
 ## Runtime identity
 
-Every configured executable/shared library has an expected SHA-256. The campaign verifies it before preparation or resumed execution. The regular preparation provenance then records the same hash in the experiment.
+Every configured executable or shared library has an expected SHA-256.
+Preparation and resumed execution verify those identities before use, and the
+realized identities are recorded in provenance.
 
-## Controlled scheduling and host readiness (R6.2)
+## Scheduling and measurement control
 
-Campaign definitions can add:
+Campaign definitions may include deterministic scheduling and host-readiness
+controls, including:
 
 ```json
-"scheduling": {
-  "condition_order": "rotating-rounds",
-  "variant_order": "balanced-by-condition-round"
+{
+  "scheduling": {
+    "condition_order": "rotating-rounds",
+    "variant_order": "balanced-by-condition-round"
+  }
 }
 ```
 
-and a `measurement_control` object for host telemetry/readiness, host-specific
-idle calibration, runtime artifact staging/cleanup and analysis warning
-thresholds. R6.2.1 uses sustained consecutive readiness and, on Darwin, a
-persistent privileged temperature sampler. These fields are part of the
-canonical campaign-definition SHA-256, so changing the control policy creates a
-different campaign definition and cannot silently resume an older experiment.
+Measurement-control fields may define host telemetry/readiness, idle
+calibration, runtime artifact staging/cleanup, and analysis warning thresholds.
 
-See `docs/r6.2-measurement-control.md` and
-`benchmark/configs/r6.3-local-http3-control.json`.
+These controls are part of the normalized campaign definition. Changing them
+changes the campaign identity and therefore cannot silently resume a different
+frozen experiment.

@@ -1,3 +1,0 @@
-# Historical C2.1 accepted benchmark runtime
-# Profile: Release, -O3 -DNDEBUG -mavx2
-f63e60ba04e5f2cdd4876f0ac416e17c4e533658b68b6e732a4dba5ee9f96f3e  libngi541_engine-install-n2-release-avx2.dylib

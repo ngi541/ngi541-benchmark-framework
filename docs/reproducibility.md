@@ -77,15 +77,18 @@ accepted evidence
 project claim
 ```
 
-## Historical and portable artifacts
+## Source repository and generated research data
 
-Historical evidence and the current reusable benchmark framework are distinct.
+The source repository contains reusable framework code and active scientific
+definitions.
 
-Historical files must preserve what actually ran, including inconvenient absolute paths or older runner conventions when those details are relevant to provenance.
+Concrete experiment instances, qualifications, generated corpora, build trees,
+and publication bundles are generated research data. They are preserved as
+research outputs when needed, but they are not tracked as source files on
+`main`.
 
-Portable benchmark code represents how equivalent experiments are reproduced from now on.
-
-Historical artifacts must not be silently rewritten to look like the newer framework.
+Repository history is preserved by Git commits and release tags rather than by
+duplicating obsolete layouts inside the current tree.
 
 ## Current reproducibility boundary
 
@@ -122,11 +125,14 @@ claim scope matches the measured data
 The repository separates reusable machinery, execution environment, concrete campaigns, and accepted claims:
 
 ```text
-benchmark/      reusable measurement machinery
-environments/   provisioning and execution environment
-experiments/    concrete immutable campaigns
-evidence/       accepted project evidence
+benchmark/      reusable scientific machinery and active definitions
+environments/   deployment descriptors
+integration/    NGINX integration patches, tests, and pinned versions
+scripts/        build, test, dependency, and experiment entry points
 ```
+
+Concrete experiments and publication artifacts are generated outside the
+tracked source surface.
 
 See also:
 

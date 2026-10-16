@@ -16,22 +16,24 @@ from framework.loadgen_runtime import (
     validate_definition,
 )
 
-
-CONFIG = BENCHMARK_DIR / "configs" / "r6.5.2-pi-http3-loadgen.json"
-H2LOAD_CONFIG = BENCHMARK_DIR / "configs" / "r6.5.3b-pi-http3-loadgen.json"
-PATCHED_H2LOAD_CONFIG = BENCHMARK_DIR / "configs" / "r6.5.4.2-pi-http3-loadgen.json"
+CONFIG = BENCHMARK_DIR / "configs" / "r6.5.4.2-pi-http3-loadgen.json"
 
 
 class LoadgenRuntimeDefinitionTests(unittest.TestCase):
     def test_valid_definition(self):
         value = load_definition(CONFIG)
+        self.assertEqual(value["runtime"]["kind"], "curl-h2load-http3-ngtcp2")
         self.assertEqual(value["sources"]["curl"]["version"], "8.22.0")
         self.assertEqual(value["sources"]["ngtcp2"]["version"], "1.25.0")
+        self.assertEqual(value["sources"]["nghttp2"]["version"], "1.69.0")
 
     def test_definition_hash_is_semantic(self):
-        a = load_definition(CONFIG)
-        b = json.loads(json.dumps(a, sort_keys=False))
-        self.assertEqual(definition_sha256(a), definition_sha256(b))
+        value = load_definition(CONFIG)
+        reordered = json.loads(json.dumps(value, sort_keys=True))
+        self.assertEqual(
+            definition_sha256(value),
+            definition_sha256(reordered),
+        )
 
     def test_absolute_install_root_rejected(self):
         value = load_definition(CONFIG)
@@ -39,57 +41,21 @@ class LoadgenRuntimeDefinitionTests(unittest.TestCase):
         with self.assertRaises(FrameworkError):
             validate_definition(value)
 
-    def test_invalid_sha_rejected(self):
+    def test_invalid_source_sha_rejected(self):
         value = load_definition(CONFIG)
         value["sources"]["curl"]["sha256"] = "deadbeef"
         with self.assertRaises(FrameworkError):
             validate_definition(value)
 
-
-class LoadgenBuildScriptTests(unittest.TestCase):
-    def test_script_pins_versions_and_checks_http3(self):
+    def test_h2load_source_is_required(self):
         value = load_definition(CONFIG)
-        script = render_build_script(value)
-        self.assertIn("openssl-3.6.4", script)
-        self.assertIn("nghttp3-1.18.0", script)
-        self.assertIn("ngtcp2-1.25.0", script)
-        self.assertIn("curl-8.22.0", script)
-        self.assertIn("--with-ngtcp2", script)
-        self.assertIn("grep -q 'HTTP3'", script)
-
-    def test_script_verifies_every_source_sha(self):
-        value = load_definition(CONFIG)
-        script = render_build_script(value)
-        for source in value["sources"].values():
-            self.assertIn(source["sha256"], script)
-
-
-class H2loadRuntimeDefinitionTests(unittest.TestCase):
-    def test_h2load_definition_is_valid_and_pinned(self):
-        value = load_definition(H2LOAD_CONFIG)
-        self.assertEqual(value["runtime"]["kind"], "curl-h2load-http3-ngtcp2")
-        self.assertEqual(value["sources"]["nghttp2"]["version"], "1.69.0")
-        self.assertEqual(
-            value["sources"]["nghttp2"]["sha256"],
-            "1fb324b6ec2c56f6bde0658f4139ffd8209fa9e77ce98fd7a5f63af8d0e508ad",
-        )
-
-    def test_h2load_source_is_required_for_h2load_kind(self):
-        value = load_definition(H2LOAD_CONFIG)
         del value["sources"]["nghttp2"]
         with self.assertRaises(FrameworkError):
             validate_definition(value)
 
-    def test_original_r652_definition_remains_valid(self):
+    def test_nghttp2_patch_is_pinned(self):
         value = load_definition(CONFIG)
-        self.assertEqual(value["runtime"]["kind"], "curl-http3-ngtcp2")
-        self.assertNotIn("nghttp2", value["sources"])
-
-
-    def test_patched_h2load_definition_pins_accounting_patch(self):
-        value = load_definition(PATCHED_H2LOAD_CONFIG)
         patch = value["patches"]["nghttp2"]
-
         self.assertEqual(
             patch["path"],
             "integration/patches/nghttp2-1.69.0/"
@@ -100,104 +66,68 @@ class H2loadRuntimeDefinitionTests(unittest.TestCase):
             "ee36b8c0ff3b6c2bf703dcb0ea5608b237a98857d2d164960a5bf1de769d08a5",
         )
 
-    def test_patched_h2load_definition_has_distinct_identity(self):
-        self.assertNotEqual(
-            definition_sha256(load_definition(H2LOAD_CONFIG)),
-            definition_sha256(load_definition(PATCHED_H2LOAD_CONFIG)),
+
+class LoadgenBuildScriptTests(unittest.TestCase):
+    def setUp(self):
+        self.value = load_definition(CONFIG)
+        self.script = render_build_script(self.value)
+
+    def test_script_pins_versions_and_http3_capabilities(self):
+        self.assertIn("openssl-3.6.4", self.script)
+        self.assertIn("nghttp3-1.18.0", self.script)
+        self.assertIn("ngtcp2-1.25.0", self.script)
+        self.assertIn("curl-8.22.0", self.script)
+        self.assertIn("nghttp2-1.69.0.tar.xz", self.script)
+        self.assertIn("--with-ngtcp2", self.script)
+        self.assertIn("--enable-app --enable-http3", self.script)
+        self.assertIn("--h3", self.script)
+        self.assertIn("--output-file", self.script)
+        self.assertIn("--timing-script-file", self.script)
+        self.assertIn("--rps", self.script)
+
+    def test_script_verifies_every_source_sha(self):
+        for source in self.value["sources"].values():
+            self.assertIn(source["sha256"], self.script)
+
+    def test_h2load_build_forces_cxx20_before_configure(self):
+        probe_pos = self.script.index("c++ -std=c++20")
+        build_flag_pos = self.script.index('export CXXFLAGS="-std=c++20"')
+        configure_pos = self.script.index(
+            './configure --prefix="$PREFIX/nghttp2" --enable-app --enable-http3'
         )
-
-
-class H2loadBuildScriptTests(unittest.TestCase):
-    def test_script_builds_http3_h2load_and_checks_capabilities(self):
-        value = load_definition(H2LOAD_CONFIG)
-        script = render_build_script(value)
-        self.assertIn("nghttp2-1.69.0.tar.xz", script)
-        self.assertIn("--enable-app --enable-http3", script)
-        self.assertIn("--h3", script)
-        self.assertIn("--output-file", script)
-        self.assertIn("--timing-script-file", script)
-        self.assertIn("--rps", script)
-        self.assertIn("c++ -std=c++20", script)
-        self.assertIn('export CXXFLAGS="-std=c++20"', script)
-
-    def test_h2load_build_forces_cxx20_after_successful_probe(self):
-        value = load_definition(H2LOAD_CONFIG)
-        script = render_build_script(value)
-        probe_pos = script.index('c++ -std=c++20')
-        build_flag_pos = script.index('export CXXFLAGS="-std=c++20"')
-        configure_pos = script.index('./configure --prefix="$PREFIX/nghttp2" --enable-app --enable-http3')
         self.assertLess(probe_pos, build_flag_pos)
         self.assertLess(build_flag_pos, configure_pos)
 
-
     def test_h2load_build_is_scoped_to_required_target(self):
-        value = load_definition(H2LOAD_CONFIG)
-        script = render_build_script(value)
-        self.assertIn("make -j4 -C lib", script)
-        self.assertIn("make -j4 -C third-party", script)
-        self.assertIn("make -j4 -C src h2load", script)
-
-    def test_h2load_install_does_not_build_other_nghttp2_apps(self):
-        value = load_definition(H2LOAD_CONFIG)
-        script = render_build_script(value)
-        self.assertIn("./libtool --mode=install /usr/bin/install -c src/h2load", script)
-        self.assertNotIn("make -C src install", script)
-        self.assertIn("--disable-examples", script)
-
-    def test_script_verifies_nghttp2_source_sha(self):
-        value = load_definition(H2LOAD_CONFIG)
-        script = render_build_script(value)
-        self.assertIn(value["sources"]["nghttp2"]["sha256"], script)
-
-    def test_h2load_definition_hash_differs_from_r652(self):
-        self.assertNotEqual(
-            definition_sha256(load_definition(CONFIG)),
-            definition_sha256(load_definition(H2LOAD_CONFIG)),
-        )
-
-
-    def test_patched_h2load_build_verifies_and_applies_patch(self):
-        value = load_definition(PATCHED_H2LOAD_CONFIG)
-        script = render_build_script(value)
-
+        self.assertIn("make -j4 -C lib", self.script)
+        self.assertIn("make -j4 -C third-party", self.script)
+        self.assertIn("make -j4 -C src h2load", self.script)
         self.assertIn(
-            "ee36b8c0ff3b6c2bf703dcb0ea5608b237a98857d2d164960a5bf1de769d08a5",
-            script,
+            "./libtool --mode=install /usr/bin/install -c src/h2load",
+            self.script,
         )
-        self.assertIn(
-            'printf \'%s\'',
-            script,
-        )
-        self.assertIn(
-            "base64 -d",
-            script,
-        )
-        self.assertIn(
-            "patch --dry-run --batch --forward -p1",
-            script,
-        )
-        self.assertIn(
-            "patch --batch --forward -p1",
-            script,
-        )
-        self.assertIn(
-            "patch --dry-run --batch --reverse -p1",
-            script,
-        )
+        self.assertNotIn("make -C src install", self.script)
+        self.assertIn("--disable-examples", self.script)
 
-        patch_pos = script.index(
+    def test_script_verifies_and_applies_pinned_patch(self):
+        patch_sha = self.value["patches"]["nghttp2"]["sha256"]
+        self.assertIn(patch_sha, self.script)
+        self.assertIn("base64 -d", self.script)
+        self.assertIn("patch --dry-run --batch --forward -p1", self.script)
+        self.assertIn("patch --batch --forward -p1", self.script)
+        self.assertIn("patch --dry-run --batch --reverse -p1", self.script)
+
+        patch_pos = self.script.index(
             'echo "==> apply pinned nghttp2 patch"'
         )
-        configure_pos = script.index(
+        configure_pos = self.script.index(
             './configure --prefix="$PREFIX/nghttp2" --enable-app --enable-http3'
         )
-
         self.assertLess(patch_pos, configure_pos)
 
-    def test_patched_h2load_rejects_patch_sha_drift(self):
-        value = load_definition(PATCHED_H2LOAD_CONFIG)
+    def test_patch_sha_drift_is_rejected(self):
+        value = load_definition(CONFIG)
         value["patches"]["nghttp2"]["sha256"] = "0" * 64
-
         with self.assertRaises(FrameworkError):
             render_build_script(value)
 

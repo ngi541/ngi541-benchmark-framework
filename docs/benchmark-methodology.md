@@ -205,16 +205,6 @@ PMU measurements are environment-specific and must record the counter set and co
 
 Derived metrics must identify the raw counters from which they were computed.
 
-## Historical C2.1 local measurements
-
-The C2.1 NGINX HTTP/3 measurements are preliminary single-host evidence.
-
-They use loopback networking and share CPU resources between load generation and the NGINX system under test.
-
-They are useful for establishing a repeatable performance signal but do not replace dedicated client/server evaluation.
-
-Dedicated bare-metal experiments are required to separate cryptographic execution effects from host-level contention at higher concurrency.
-
 See also:
 
 - [`reproducibility.md`](reproducibility.md)

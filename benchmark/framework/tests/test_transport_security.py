@@ -25,7 +25,7 @@ from framework.transport_security import (
     validate_definition,
 )
 
-CONFIG = BENCHMARK_DIR / "configs" / "r6.5.3e-pi-mac-http3-security.json"
+CONFIG = BENCHMARK_DIR / "configs" / "r6.5.4.2-pi-mac-http3-security.json"
 REGISTRY = BENCHMARK_DIR / "scientific-profiles"
 
 

@@ -1,4 +1,0 @@
- src/engine/execute.c          | 648 ++++++++++++++++++++++++++++--------------
- src/engine/handlers/aes_ctr.c | 156 ++++++++++
- src/engine/handlers/aes_gcm.c | 277 ++++++++++++++++++
- 3 files changed, 861 insertions(+), 220 deletions(-)

@@ -20,7 +20,7 @@ from framework.io_utils import FrameworkError
 
 
 ROOT = Path(__file__).resolve().parents[3]
-CONFIG = ROOT / "benchmark" / "configs" / "r6.5.3f-pi-mac-dual-host-telemetry.json"
+CONFIG = ROOT / "benchmark" / "configs" / "r6.5.4.2-pi-mac-dual-host-telemetry.json"
 
 
 class DualHostTelemetryDefinitionTests(unittest.TestCase):

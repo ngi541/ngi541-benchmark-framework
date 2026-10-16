@@ -1,7 +1,0 @@
-experiment_id,payload_bytes,workers,clients,repetitions,baseline_median_rps,ngi541_median_rps,median_delta_percent,paired_delta_percent,ngi541_wins,notes
-c2.1-local-http3,16384,1,1,,3242.79,3242.95,0.00,,,Low-concurrency parity; exact repetition count was not recovered.
-c2.1-local-http3,16384,2,8,10,9400.27,9572.33,1.83,1.60,7,Canonical later 10-round set; includes two pathological NGI541 drops and is not the basis of the 4-6% claim.
-c2.1-local-http3,16384,2,16,5,8786.95,9283.03,5.65,5.19,5,Primary sustained multi-connection evidence point.
-c2.1-local-http3,16384,4,16,5,9082.30,9456.88,4.12,5.17,5,Primary sustained multi-connection evidence point.
-c2.1-local-http3,16384,4,32,5,8319.39,8518.44,2.39,3.92,4,Host saturation materially limits interpretation at this concurrency.
-c2.1-local-http3,1024,2,16,5,11524.20,11581.57,0.50,1.81,3,Small-payload workload shows near parity.

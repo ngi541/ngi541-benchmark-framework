@@ -1,74 +1,54 @@
 # Benchmark framework
 
-The `benchmark/` directory contains reusable benchmark machinery for evaluating NGI541 in network data paths.
+`benchmark/` contains the reusable, provider-neutral scientific benchmark
+framework for NGI541 network-data-path evaluation.
 
-It is intentionally independent from any specific execution environment or individual experiment campaign.
-
-## Responsibilities
-
-The benchmark layer may contain:
-
-- workload definitions;
-- protocol- and application-specific benchmark configurations;
-- reusable benchmark runners;
-- primitive-level microbenchmarks;
-- measurement helpers;
-- deterministic analysis code.
-
-The expected structure is:
+## Canonical structure
 
 ```text
 benchmark/
-├── workloads/
-│   ├── primitives/
-│   ├── http3/
-│   ├── tls13/
-│   └── reverse-proxy/
-├── configs/
-├── runner/
-└── analysis/
+├── configs/                active executable configuration graph
+├── framework/              execution, validation, analysis, and provenance
+│   ├── schemas/            machine-readable contracts
+│   └── tests/              framework regression tests
+├── protocols/              deployment-independent scientific protocols
+├── scientific-profiles/    workload/scientific-data profiles
+└── workloads/
+    └── http3/              HTTP/3 workload adapter
 ```
 
-Directories should be introduced together with real implementation. Empty placeholders are not required.
+Generated experiment instances, qualification outputs, corpora, build trees,
+and publication bundles are runtime data and are not source-controlled.
 
-## Boundary
+## Boundaries
 
-`benchmark/` does not provision machines, describe a particular historical campaign, or contain project-level performance claims.
+Scientific protocol semantics must not encode a deployment provider, host name,
+SSH target, CloudLab identifier, or machine-specific path.
 
-Those responsibilities belong to:
+Deployment descriptors define where a protocol is executed. The framework
+records realized hardware/software state as execution provenance.
+
+The active HTTP/3 paired methodology is defined in:
 
 ```text
-environments/  execution environment and provisioning
-experiments/   concrete reproducible campaigns and their results
-evidence/      accepted project evidence and scoped claims
+benchmark/protocols/http3-paired-r6.5.4.5.json
 ```
 
-## Design requirements
+The executable reference configuration remains under `benchmark/configs/`
+until provider-specific execution inputs are fully represented by deployment
+descriptors.
 
-Benchmark execution must make workload parameters explicit.
+## Requirements
 
-Parameters such as payload size, connection concurrency, worker count, protocol mode, warm-up policy, measurement duration or request count, cipher suite, traffic direction, connection lifetime, and integration mode must not depend on undocumented host state.
-
-Raw measurements must be preserved before statistical processing.
-
-Analysis must be deterministic from the preserved experiment inputs and raw results.
-
-The framework must support both protocol-level workloads and isolated cryptographic execution measurements.
-
-## Planned workload classes
-
-The benchmark framework is expected to grow around several complementary workload classes:
-
-- primitive execution;
-- NGINX HTTP/3 over QUIC;
-- TLS 1.3 over TCP;
-- TLS reverse proxy;
-- long-lived TLS connections;
-- small-message and high-concurrency workloads;
-- additional network data-plane workloads when they provide a concrete research or adoption target.
+- correctness validation precedes performance interpretation;
+- inputs and comparison policy are explicit;
+- paired ordering is deterministic and auditable;
+- raw measurements are immutable within an execution instance;
+- analysis is deterministic from frozen inputs and raw measurements;
+- provider identity is provenance, not scientific identity.
 
 See:
 
 - [`../docs/benchmark-methodology.md`](../docs/benchmark-methodology.md)
-- [`../docs/experimental-scope.md`](../docs/experimental-scope.md)
-- [`../docs/integration-model.md`](../docs/integration-model.md)
+- [`../docs/reproducibility.md`](../docs/reproducibility.md)
+- [`../docs/portability-contract.md`](../docs/portability-contract.md)

@@ -1,1 +1,0 @@
-6149f108b635c75b9edbd6b0761b12621a45525b60433dc45db437488b434bb6  patches/nginx-1.31.6/0001-ngi541-quic-crypto.patch

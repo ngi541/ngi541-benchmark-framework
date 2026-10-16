@@ -135,7 +135,7 @@ A versioned campaign definition can drive the complete experiment lifecycle:
 
 ```bash
 ./scripts/experiment.sh campaign \
-  --config benchmark/configs/c2.2-local-http3.json
+  --config <campaign-config.json>
 ```
 
 The command creates or resumes the matching experiment and advances only through legal lifecycle transitions: plan, prepare, seal, validate, execute, validate, analyze. The campaign definition is snapshotted into `config/campaign.json` and identified by a canonical SHA-256.
@@ -190,7 +190,7 @@ R6.5.2 adds `loadgen-runtime`, which provisions a pinned curl + OpenSSL + ngtcp2
 
 ```bash
 ./scripts/experiment.sh loadgen-runtime \
-  --config benchmark/configs/r6.5.2-pi-http3-loadgen.json \
+  --config benchmark/configs/r6.5.4.2-pi-http3-loadgen.json \
   --bootstrap
 ```
 
@@ -282,7 +282,7 @@ gate:
 
 ```bash
 ./scripts/experiment.sh transport-security \
-  --config benchmark/configs/r6.5.3e-pi-mac-http3-security.json
+  --config benchmark/configs/r6.5.4.2-pi-mac-http3-security.json
 ```
 
 The gate runs both `stock` and `ngi541-direct` NGINX variants, requires HTTP/3
@@ -299,7 +299,7 @@ stock-only workload planner and later paired campaigns:
 
 ```bash
 ./scripts/experiment.sh dual-host-telemetry \
-  --config benchmark/configs/r6.5.3f-pi-mac-dual-host-telemetry.json
+  --config benchmark/configs/r6.5.4.2-pi-mac-dual-host-telemetry.json
 ```
 
 The Darwin DUT provider records system load, a process-tree CPU/RSS snapshot,
@@ -328,7 +328,7 @@ immutable `processed/final-manifest.json` for R6.5.4:
 
 ```bash
 ./scripts/experiment.sh final-freeze \
-  --config benchmark/configs/r6.5.3h-pi-mac-final-freeze.json
+  --config benchmark/configs/r6.5.4.2-pi-mac-final-freeze.json
 ```
 
 The command persists the frozen R6.5.3 lifecycle, can resume a FAILED freeze

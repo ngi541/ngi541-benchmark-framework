@@ -27,7 +27,7 @@ from framework.final_freeze import (
 from framework.io_utils import FrameworkError, atomic_write_json, atomic_write_text
 
 ROOT = Path(__file__).resolve().parents[3]
-CONFIG = ROOT / "benchmark" / "configs" / "r6.5.3h-pi-mac-final-freeze.json"
+CONFIG = ROOT / "benchmark" / "configs" / "r6.5.4.2-pi-mac-final-freeze.json"
 
 
 class FinalFreezeDefinitionTests(unittest.TestCase):
