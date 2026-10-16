@@ -1,36 +1,52 @@
-# Experiment JSON schemas
+# Experiment schemas
 
-This directory contains machine-readable JSON Schema definitions for the R5 experiment contract.
+`benchmark/framework/schemas/` contains the machine-readable JSON Schema contracts used by NGI541 Benchmark Framework.
 
-Schemas use JSON Schema Draft 2020-12.
+The schemas describe persistent experiment definitions and generated artifacts. They are part of the current framework contract, not a historical record of individual R5/R6 milestones.
 
-Current schemas:
+Schemas use **JSON Schema Draft 2020-12**.
+
+## Purpose
+
+The schema layer makes experiment artifacts externally inspectable and independently validatable.
+
+It documents contracts for:
+
+- experiment lifecycle state and manifests;
+- schedules and measurements;
+- deployment descriptions;
+- network qualification and evidence;
+- deterministic scientific profiles and corpora;
+- HTTP/3 transport-security qualification;
+- dual-host telemetry;
+- workload planning;
+- final frozen experiment inputs;
+- paired scientific execution;
+- publication results and integrity records;
+- provider-independent scientific protocol identity.
+
+The Python framework intentionally does not require a third-party JSON Schema implementation at runtime. Core invariants are enforced directly in standard-library Python, while these schema files provide a portable machine-readable specification for development, CI, external tooling, and archived research artifacts.
+
+## Identity boundary
+
+Schemas distinguish three kinds of identity:
 
 ```text
-manifest.schema.json
-state.schema.json
-schedule.schema.json
-measurement.schema.json
+scientific protocol
+    provider-independent experiment semantics
+
+deployment
+    mapping of logical roles onto concrete infrastructure
+
+execution instance
+    realized binaries, hosts, timestamps, measurements, and evidence
 ```
 
-The schemas are framework contracts, not historical descriptions of `c2.1-local-http3`.
-
-## Runtime dependency policy
-
-The R5 core framework must not require a third-party JSON Schema implementation at runtime.
-
-Python 3 standard-library code will enforce core invariants directly.
-
-These schema files exist to:
-
-- document the contract precisely;
-- support optional validation in development and CI;
-- make generated artifacts externally understandable;
-- allow downstream users to validate experiments with standard JSON Schema tooling.
+Provider-specific fields such as CloudLab allocation identifiers, SSH targets, or concrete host names belong to deployment/execution provenance and must not silently become part of scientific experiment identity.
 
 ## Versioning
 
-Each generated artifact contains:
+Persistent generated artifacts carry a schema version, for example:
 
 ```json
 {
@@ -38,14 +54,14 @@ Each generated artifact contains:
 }
 ```
 
-Backward-incompatible schema changes require a new integer schema version.
+Backward-incompatible contract changes require a new schema version or a new schema contract. Existing frozen scientific artifacts are not rewritten in place.
 
 ## Common conventions
 
-Timestamps use UTC RFC 3339:
+Timestamps use UTC RFC 3339 form:
 
 ```text
-2026-10-09T21:45:12Z
+2026-10-16T01:18:12Z
 ```
 
 Run IDs use:
@@ -60,51 +76,55 @@ Pair IDs use:
 pair-0001
 ```
 
-Canonical variants include:
+Current benchmark variants include:
 
 ```text
 stock
 ngi541-direct
-ngi541-provider
 ```
 
-Workload-specific parameters and observations remain extensible JSON objects.
+Workload-specific parameters and observations remain explicit structured objects rather than hidden framework state.
 
-- `scientific-profile.schema.json` — versioned, environment-independent scientific workload profile contract used from R6.5.3 onward.
-- `network-evidence.schema.json` — R6.5.3c resolver policy for selecting compatible R6.5.1 observations.
-- `network-envelope.schema.json` — deterministic normalized network service-envelope artifact consumed by later transport planning.
-- `scientific-corpus.schema.json` — R6.5.3d deterministic corpus-generation definition.
-- `corpus-manifest.schema.json` — normalized indexed-stream or finite-object-set corpus manifest.
-- `coverage-manifest.schema.json` — deterministic execution coverage selection for a frozen corpus.
-- `transport-security.schema.json` — R6.5.3e remote HTTP/3/TLS functional security qualification contract for stock and NGI541 scientific-object transport.
+## Current schema inventory
 
-- `dual-host-telemetry.schema.json` — R6.5.3f dual-host telemetry qualification definition.
-- `telemetry-sample.schema.json` — normalized per-host telemetry sample contract.
+- `campaign.schema.json`
+- `corpus-manifest.schema.json`
+- `coverage-manifest.schema.json`
+- `deployment.schema.json`
+- `dual-host-telemetry.schema.json`
+- `final-freeze-manifest.schema.json`
+- `final-freeze-state.schema.json`
+- `final-freeze.schema.json`
+- `loadgen-runtime.schema.json`
+- `manifest.schema.json`
+- `measurement.schema.json`
+- `network-envelope.schema.json`
+- `network-evidence.schema.json`
+- `network-qualification.schema.json`
+- `paired-execution-result.schema.json`
+- `paired-scientific-execution.schema.json`
+- `paired-scientific-protocol.schema.json`
+- `publication-bundle.schema.json`
+- `result-integrity.schema.json`
+- `result-manifest.schema.json`
+- `schedule.schema.json`
+- `scientific-corpus.schema.json`
+- `scientific-experiment-identity.schema.json`
+- `scientific-profile.schema.json`
+- `state.schema.json`
+- `telemetry-sample.schema.json`
+- `transport-security.schema.json`
+- `workload-plan.schema.json`
+- `workload-planner.schema.json`
 
-## R6.5.3g workload planning
+## Validation
 
-- `workload-planner.schema.json` defines the stock-only calibration policy.
-- `workload-plan.schema.json` describes the immutable derived plan consumed by later paired campaigns.
+Framework tests validate the implementation against these contracts:
 
-The planner may tune only the stock NGINX path. NGI541 is prohibited from rate,
-concurrency, worker, coverage or target selection.
+```bash
+python3 -m unittest discover \
+  -s benchmark/framework/tests \
+  -p 'test_*.py'
+```
 
-## R6.5.3h final freeze
-
-- `final-freeze.schema.json` — final-freeze definition and input-selection policy.
-- `final-freeze-state.schema.json` — resumable R6.5.3h lifecycle state.
-- `final-freeze-manifest.schema.json` — immutable evidence-chain and R6.5.4 execution contract.
-
-- `paired-scientific-execution.schema.json` — R6.5.4.1 corrected paired campaign definition and measurement-protocol controls.
-- `paired-execution-result.schema.json` — per-run R6.5.4.1 measurement result.
-
-
-- `result-manifest.schema.json` — canonical publication-level scientific result contract.
-- `result-integrity.schema.json` — fail-closed publication integrity and diagnostic record.
-- `publication-bundle.schema.json` — content-addressed identity for the concrete publication package.
-
-## Portability contracts
-
-- `deployment.schema.json` — provider/deployment metadata and canonical `dut` / `loadgen` node-role assignment. Deployment is provenance, not scientific identity.
-- `scientific-experiment-identity.schema.json` — provider-independent scientific definition projection used to derive a stable scientific identity without host, provider, or allocation names.
-- `paired-scientific-protocol.schema.json` — provider-independent paired methodology contract separated from deployment bindings.
+The schemas complement those executable invariants; they do not replace them.

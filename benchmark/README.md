@@ -1,54 +1,99 @@
-# Benchmark framework
+# Benchmark layer
 
-`benchmark/` contains the reusable, provider-neutral scientific benchmark
-framework for NGI541 network-data-path evaluation.
+`benchmark/` contains the provider-independent experimental machinery used by NGI541 Benchmark Framework.
 
-## Canonical structure
+The benchmark layer defines **what is measured and how it is measured**. It does not own infrastructure allocation.
+
+## Structure
 
 ```text
 benchmark/
-├── configs/                active executable configuration graph
-├── framework/              execution, validation, analysis, and provenance
-│   ├── schemas/            machine-readable contracts
-│   └── tests/              framework regression tests
-├── protocols/              deployment-independent scientific protocols
-├── scientific-profiles/    workload/scientific-data profiles
+├── configs/
+│   └── active executable definitions for the current implementation
+├── framework/
+│   ├── lifecycle orchestration
+│   ├── qualification and validation
+│   ├── telemetry
+│   ├── workload planning
+│   ├── paired execution
+│   ├── deterministic analysis
+│   ├── result publication
+│   ├── schemas/
+│   └── tests/
+├── protocols/
+│   └── provider-independent frozen scientific methodology
+├── scientific-profiles/
+│   └── deterministic scientific workload profiles
 └── workloads/
-    └── http3/              HTTP/3 workload adapter
+    └── http3/
+        └── application workload adapter
 ```
 
-Generated experiment instances, qualification outputs, corpora, build trees,
-and publication bundles are runtime data and are not source-controlled.
+## Boundary
 
-## Boundaries
+The scientific layer must not depend on:
 
-Scientific protocol semantics must not encode a deployment provider, host name,
-SSH target, CloudLab identifier, or machine-specific path.
+- CloudLab allocation IDs;
+- SSH host names;
+- provider-specific machine names;
+- local filesystem roots;
+- hardware inventory that belongs to a concrete execution;
+- manually chosen post-result tuning.
 
-Deployment descriptors define where a protocol is executed. The framework
-records realized hardware/software state as execution provenance.
+Provider and machine realization belongs to `environments/` and execution provenance.
 
-The active HTTP/3 paired methodology is defined in:
+## Methodology principles
+
+A performance campaign should make explicit:
+
+- workload object semantics;
+- protocol and cipher suite;
+- variants under comparison;
+- condition ordering;
+- repetition count;
+- warm-up policy;
+- measurement window;
+- validity gates;
+- primary and secondary metrics;
+- pairing rules;
+- retry policy;
+- outlier policy.
+
+The current controlled paired methodology plans load against `stock` only, freezes inputs before candidate execution, balances variant order, retains every valid observation, and prohibits metric-dependent retry and metric-dependent outlier deletion.
+
+## Generated data
+
+The following are generated research data and are intentionally not source-controlled:
 
 ```text
-benchmark/protocols/http3-paired-r6.5.4.5.json
+experiments/
+qualifications/
+corpora/
+artifacts/
 ```
 
-The executable reference configuration remains under `benchmark/configs/`
-until provider-specific execution inputs are fully represented by deployment
-descriptors.
+They contain execution-specific evidence and may be large.
 
-## Requirements
+## Entry points
 
-- correctness validation precedes performance interpretation;
-- inputs and comparison policy are explicit;
-- paired ordering is deterministic and auditable;
-- raw measurements are immutable within an execution instance;
-- analysis is deterministic from frozen inputs and raw measurements;
-- provider identity is provenance, not scientific identity.
+Framework CLI:
+
+```bash
+./scripts/experiment.sh <command> ...
+```
+
+Framework tests:
+
+```bash
+python3 -m unittest discover \
+  -s benchmark/framework/tests \
+  -p 'test_*.py'
+```
 
 See:
 
+- [`framework/README.md`](framework/README.md)
+- [`protocols/README.md`](protocols/README.md)
+- [`workloads/http3/README.md`](workloads/http3/README.md)
 - [`../docs/benchmark-methodology.md`](../docs/benchmark-methodology.md)
 - [`../docs/reproducibility.md`](../docs/reproducibility.md)
-- [`../docs/portability-contract.md`](../docs/portability-contract.md)

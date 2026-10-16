@@ -1,142 +1,77 @@
 # HTTP/3 workload adapter
 
-This adapter executes the R5 experiment schedule against NGINX HTTP/3 variants.
+The HTTP/3 workload adapter executes controlled NGI541 experiments through NGINX QUIC/HTTP/3.
 
-## Execution model
+It is the current application-level workload used to evaluate whether NGI541 changes the resource cost of encrypted data delivery without changing the intended transport and application semantics.
 
-For every scheduled run the adapter:
+## Variants
 
-1. selects the sealed variant runtime binding;
-2. verifies the executable and library SHA-256 fingerprints;
-3. copies those exact artifacts into an ephemeral runtime directory;
-4. copies the deterministic payload selected by the run;
-5. generates a run-specific NGINX configuration;
-6. generates an ephemeral one-day self-signed TLS certificate;
-7. validates the NGINX configuration;
-8. starts NGINX in the foreground;
-9. probes HTTP/3 readiness;
-10. performs concurrent warmup;
-11. executes concurrent measured curl clients;
-12. writes `measurement.json`;
-13. preserves client/server logs;
-14. shuts NGINX down;
-15. continues to the next immutable schedule entry.
-
-No measured value exists only in terminal output.
-
-## Defaults
-
-Unless explicitly overridden in the experiment request:
+The current paired methodology compares:
 
 ```text
-payload_bytes: [16384]
-workers: [1]
-clients: [1]
-requests_per_client: 5000
-warmup_requests_per_client: 50
-cipher_suite: TLS_AES_128_GCM_SHA256
-server_host: 127.0.0.1
-server_port: 8443
-worker_connections: 4096
-keepalive_requests: 20000
-startup_timeout_seconds: 10
-client_timeout_seconds: 60
+stock
+ngi541-direct
 ```
 
-For short framework smoke tests, explicitly reduce `requests_per_client`, warmup, clients, and repetitions.
+`stock` uses the normal NGINX/OpenSSL QUIC cryptographic path.
 
-## Runtime bindings
+`ngi541-direct` uses the NGI541 integration for supported QUIC packet-protection operations while retaining the surrounding NGINX/OpenSSL TLS 1.3 and certificate machinery.
 
-Every variant must be bound during `prepare`:
+## Per-run execution
 
-```bash
---binary stock=/path/to/stock/nginx
---binary ngi541-direct=/path/to/ngi541/nginx
-```
+For each frozen scheduled run the adapter:
 
-The name before `=` must exactly match the variant ID.
+1. resolves the sealed variant;
+2. verifies required binary/library SHA-256 identities;
+3. stages exact runtime artifacts;
+4. resolves the deterministic scientific object;
+5. generates run-specific NGINX configuration;
+6. establishes the required TLS test identity;
+7. validates NGINX configuration;
+8. starts the server;
+9. verifies HTTP/3 readiness;
+10. performs warm-up;
+11. executes the frozen measurement phase;
+12. records client/server outputs and telemetry;
+13. evaluates validity gates;
+14. persists append-only raw evidence;
+15. removes transient attempt runtime state when configured.
 
-Shared libraries required by a variant are supplied before sealing:
+## Transport contract
 
-```bash
---runtime-library ngi541-direct=/path/to/libngi541_engine.dylib
-```
-
-The option may be repeated when the loader needs multiple versioned library files.
-
-All runtime artifacts must be located below the repository directory or its parent so the sealed record can use a portable relative location.
-
-At execution time each artifact is hashed again before and after copying into the ephemeral runtime directory.
-
-## Payloads
-
-Payloads are generated during preparation as zero-filled deterministic files.
-
-This intentionally reproduces the historical C2.1 payload identities for the 1 KiB and 16 KiB cases:
+The current controlled scientific path requires:
 
 ```text
-1024 bytes:
-5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef
-
-16384 bytes:
-4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe
+HTTP/3 only
+TLS 1.3
+TLS_AES_128_GCM_SHA256
+peer verification enabled
+0-RTT disabled
 ```
 
-Payload identities are recorded in:
+Transport-security qualification occurs before performance execution.
+
+## Scientific objects
+
+The workload can consume deterministic objects produced from the scientific profile/corpus layer. Object identity and expected content hash are verified so application delivery is not accepted solely because an HTTP request returned successfully.
+
+## Measurement semantics
+
+The main measurement phase is separated from warm-up and readiness traffic.
+
+Current primary analysis includes:
 
 ```text
-execution/workload/manifest.json
+application goodput
+DUT process CPU seconds per delivered GiB
 ```
 
-## Raw output
+Secondary evidence includes estimated same-host energy cost where available and load-generator CPU headroom.
 
-Each attempt produces:
+The adapter does not decide statistical significance or publication claims. Those responsibilities belong to the frozen protocol and analysis layer.
 
-```text
-raw/runs/run-XXXX/attempt-YY/
-├── measurement.json
-├── nginx.conf
-├── nginx-test.stdout.log
-├── nginx-test.stderr.log
-├── server.stdout.log
-├── server.stderr.log
-├── stdout.log
-├── stderr.log
-├── probe/
-├── warmup/
-└── measured/
-```
+## Scope
 
-`stdout.log` and `stderr.log` are aggregated measured-client logs. Per-client logs are retained as well.
+HTTP/3 is currently the first fully implemented network-data-path workload.
 
-## Failure semantics
-
-The executor is fail-fast.
-
-A failed measured run:
-
-```text
-RUNNING -> FAILED
-```
-
-The invalid attempt remains in raw storage.
-
-Running `execute` again resumes the immutable schedule, skips already valid runs, and creates `attempt-02` for the failed run.
-
-User interruption transitions:
-
-```text
-RUNNING -> ABORTED
-```
-
-and the same `execute` command resumes later.
-
-## End state
-
-R5.4 deliberately ends successful workload execution at:
-
-```text
-ANALYZING
-```
-
-R5.5 will consume the raw measurements, select valid attempts, compute statistical summaries, generate dependency-free SVG figures, and transition the experiment to `COMPLETE`.
+The framework architecture permits future workload adapters, but a new workload class should be added only with an explicit scientific question, reproducible execution contract, and corresponding validation tests.

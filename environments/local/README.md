@@ -1,31 +1,54 @@
-# Local environment adapter
+# Local deployment
 
-The local environment adapter is implemented by:
+The local deployment is the minimal provider implementation used for framework development and smoke validation.
 
-```text
-benchmark/framework/environment.py
-```
-
-It maps one physical host to the R5 `T0` topology:
+Canonical descriptor:
 
 ```text
-host:
-  roles:
-    - load-generator
-    - dut
+environments/local/single-host.json
 ```
 
-This environment is useful for:
+It maps both logical roles to one machine:
 
-- framework development;
-- functional validation;
-- exploratory performance work;
-- low-cost reproduction.
+```text
+node: local
+roles:
+  - dut
+  - loadgen
+```
 
-It is not equivalent to a dedicated client/server benchmark topology.
+## Intended use
 
-For publication-grade end-to-end performance characterization, prefer dedicated nodes where load generation and the DUT do not share CPU resources.
+Use the local descriptor for:
 
-## Portable descriptor
+- CLI and lifecycle development;
+- schema and deployment validation;
+- functional workload checks;
+- low-cost reproduction of framework behavior;
+- preliminary performance exploration.
 
-`single-host.json` is the canonical local deployment descriptor. It assigns both `dut` and `loadgen` to the same local node for development and preliminary evaluation.
+Create a local portable experiment with:
+
+```bash
+./scripts/experiment.sh create \
+  --deployment environments/local/single-host.json \
+  --workload http3 \
+  --variant stock \
+  --variant ngi541-direct \
+  --repetitions 2 \
+  --comparison-mode paired-balanced
+```
+
+Then plan it:
+
+```bash
+./scripts/experiment.sh plan <experiment-id>
+```
+
+## Claim boundary
+
+A single-host deployment shares CPU, memory, and operating-system resources between load generation and the DUT.
+
+It is therefore **not equivalent to a dedicated client/server topology** and should not be used to generalize high-speed end-to-end performance claims.
+
+Publication-grade high-speed characterization should use dedicated nodes with explicit network and host qualification.
