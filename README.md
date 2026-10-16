@@ -1,6 +1,17 @@
+
 # NGI541 Benchmark Framework
 
-[![CI](https://github.com/ngi541/ngi541-benchmark-framework/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ngi541/ngi541-benchmark-framework/actions/workflows/ci.yml) · [Apache-2.0](LICENSE) · [NGI541 engine](https://github.com/ngi541/ngi541)
+[![CI](https://github.com/ngi541/ngi541-benchmark-framework/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ngi541/ngi541-benchmark-framework/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache--2.0-3572A5?style=flat-square)](LICENSE)
+[![NGI541 engine](https://img.shields.io/badge/NGI541-Cryptographic_Engine-30363D?style=flat-square&logo=github&logoColor=white)](https://github.com/ngi541/ngi541)
+[![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23407976.svg)](https://doi.org/10.5281/zenodo.23407976)
+
+[![CPU cost per GiB](https://img.shields.io/static/v1?label=DUT%20CPU%20cost%20%2F%20GiB&message=8.216%25%20lower&color=238636&style=for-the-badge)](https://doi.org/10.5281/zenodo.23407976)
+[![Paired CPU outcomes](https://img.shields.io/static/v1?label=Paired%20CPU%20outcomes&message=44%2F48%20favor%20NGI541&color=0969DA&style=for-the-badge)](https://doi.org/10.5281/zenodo.23407976)
+[![Application goodput](https://img.shields.io/static/v1?label=Application%20goodput&message=%E2%89%880%25%20change&color=6E7781&style=for-the-badge)](https://doi.org/10.5281/zenodo.23407976)
+
+*Published R6.5.4.5 controlled paired experiment — results scoped to the qualified, bandwidth-limited local deployment. [Explore the archived dataset and evidence](https://doi.org/10.5281/zenodo.23407976).*
+
 
 **Reproducibility-first experimental framework for controlled measurement of cryptographic execution in network data paths.** Its implemented reference experiment measures the system-level effect of replacing **server-side NGINX QUIC packet and header protection** with the [NGI541](https://github.com/ngi541/ngi541) cryptographic execution engine, while preserving HTTP/3 workload and TLS protocol semantics.
 
@@ -25,9 +36,15 @@ The internal configuration identifiers are **`stock`** (baseline OpenSSL/NGINX p
 
 The diagram distinguishes the controlled client/workload, the server-only cryptographic substitution, balanced experiment scheduling and the recorded measurements. A high-resolution [PNG version](docs/assets/framework-overview.png) is also available.
 
-## Current experimental evidence
+## Published experimental evidence
 
-The accepted **local controlled paired campaign** previously produced the following reported observations:
+The accepted **R6.5.4.5 controlled paired HTTP/3 experiment** is publicly archived as a citable research dataset:
+
+**[NGI541: Controlled Paired HTTP/3 Cryptographic Execution Benchmark Dataset (R6.5.4.5)](https://doi.org/10.5281/zenodo.23407976)**
+
+**DOI:** [10.5281/zenodo.23407976](https://doi.org/10.5281/zenodo.23407976)
+
+The archive contains the accepted publication bundle, frozen execution provenance, methodology, per-condition measurements, integrity information, three result visualizations, and the experimental topology. Under the qualified local deployment, the NGI541-integrated server path demonstrated lower CPU cost per delivered GiB while maintaining approximately equivalent application goodput.
 
 | Metric | Local result | Interpretation |
 | --- | --- | --- |
@@ -36,7 +53,7 @@ The accepted **local controlled paired campaign** previously produced the follow
 | Application goodput | **approximately 0% difference** | Throughput was dominated by the qualified network envelope |
 | Estimated energy per delivered GiB | **approximately 0.248% lower** | Small, estimate-based effect; not an external power-meter measurement |
 
-**Evidence scope:** these numbers belong to the recorded, bandwidth-limited local DUT/load-generator execution; they are **not** high-speed datacenter, HPC, or ESnet performance claims. The exact experiment manifest, raw data, validity results and publication bundle are the authority for any formal quantitative statement. An archival DOI will be linked here **after** the artifact is deposited and verified; no DOI is assigned in this source tree.
+**Evidence scope:** these numbers belong to the recorded, bandwidth-limited local DUT/load-generator execution; they are **not** high-speed datacenter, HPC, or ESnet performance claims. The exact experiment manifest, raw data, validity results and publication bundle are the authority for any formal quantitative statement.
 
 The *frozen scientific protocol* is [`benchmark/protocols/http3-paired-r6.5.4.5.json`](benchmark/protocols/http3-paired-r6.5.4.5.json), SHA-256:
 
