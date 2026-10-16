@@ -99,3 +99,25 @@ An environment adapter must not:
 - discard raw measurements.
 
 Its responsibility ends at resource preparation, normalized inventory, and topology description.
+
+## Portability transition after R6.5.4.5
+
+The historical R5 adapter output and historical experiment directories remain immutable.
+
+New portability work standardizes semantic node roles as:
+
+```text
+dut
+loadgen
+```
+
+Provider and access are separate concepts:
+
+```text
+provider: local | baremetal | cloudlab | ...
+access.mode: local | ssh
+```
+
+The initial machine-readable descriptor is `environments/local/single-host.json`.
+
+Portability P1 introduces this contract without rewiring the historical `environment = local` execution path. Runtime migration is performed separately so that historical campaigns and publication evidence remain reproducible.

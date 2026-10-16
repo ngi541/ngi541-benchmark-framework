@@ -74,3 +74,17 @@ See:
 
 - [`../docs/topology.md`](../docs/topology.md)
 - [`../docs/reproducibility.md`](../docs/reproducibility.md)
+
+## Portable deployment descriptor
+
+Post-R6.5.4.5 portability work uses a machine-readable deployment contract in addition to adapter documentation.
+
+The first descriptor is:
+
+```text
+environments/local/single-host.json
+```
+
+It assigns the canonical roles `dut` and `loadgen` to one local node. The provider (`local`) is deployment metadata and is intentionally excluded from scientific experiment identity.
+
+Future CloudLab or manually allocated bare-metal adapters must realize the same role contract rather than introducing provider names into benchmark identity.

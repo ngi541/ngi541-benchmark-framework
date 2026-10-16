@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/deployment.schema.json",
+  "title": "NGI541 portable deployment definition",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "deployment",
+    "nodes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "deployment": {
+      "type": "object",
+      "required": [
+        "name",
+        "provider",
+        "topology_class"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "provider": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "topology_class": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "nodes": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "roles",
+          "access"
+        ],
+        "properties": {
+          "roles": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "dut",
+                "loadgen"
+              ]
+            }
+          },
+          "access": {
+            "type": "object",
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "enum": [
+                  "local",
+                  "ssh"
+                ]
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "data_address": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
