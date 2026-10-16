@@ -26,6 +26,8 @@ from framework.campaign import (
     verify_active_framework_identity,
 )
 from framework.environment import prepare_environment
+from framework.deployment import load_deployment_definition
+from framework.experiment_identity import scientific_identity_sha256
 from framework.host_state import (
     calibrate_host_state,
     host_state_session,
@@ -35,6 +37,7 @@ from framework.host_state import (
 )
 from framework.ids import (
     generate_experiment_id,
+    generate_portable_experiment_id,
     utc_rfc3339,
     validate_slug,
 )
@@ -154,10 +157,16 @@ def _create_experiment_from_request(
 ) -> tuple[str, Path]:
     validate_request(request)
 
-    experiment_id = generate_experiment_id(
-        request["workload"],
-        request["environment"],
-    )
+    if "deployment" in request:
+        experiment_id = generate_portable_experiment_id(
+            request["workload"],
+            scientific_identity_sha256(request),
+        )
+    else:
+        experiment_id = generate_experiment_id(
+            request["workload"],
+            request["environment"],
+        )
     path = experiment_dir(experiment_id)
 
     if path.exists():
@@ -190,7 +199,18 @@ def _create_experiment_from_request(
 
 def command_create(args: argparse.Namespace) -> int:
     workload = validate_slug(args.workload, "workload")
-    environment = validate_slug(args.environment, "environment")
+
+    deployment = None
+    environment = None
+    if args.deployment is not None:
+        deployment = load_deployment_definition(
+            Path(args.deployment).expanduser().resolve()
+        )
+    else:
+        environment = validate_slug(
+            args.environment,
+            "environment",
+        )
 
     variants = [
         validate_slug(variant, "variant")
@@ -217,10 +237,14 @@ def command_create(args: argparse.Namespace) -> int:
 
     request: dict[str, Any] = {
         "workload": workload,
-        "environment": environment,
         "variants": variants,
         "parameters": parameters,
     }
+
+    if deployment is not None:
+        request["deployment"] = deployment
+    else:
+        request["environment"] = environment
 
     if comparison:
         request["comparison"] = comparison
@@ -314,7 +338,8 @@ def command_prepare(args: argparse.Namespace) -> int:
     try:
         adapter = prepare_environment(
             path,
-            request["environment"],
+            environment_name=request.get("environment"),
+            deployment=request.get("deployment"),
         )
 
         sources = discover_sources(
@@ -1449,7 +1474,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="create a new experiment and enter PREPARING state",
     )
     create.add_argument("--workload", required=True)
-    create.add_argument("--environment", required=True)
+    placement = create.add_mutually_exclusive_group(required=True)
+    placement.add_argument(
+        "--environment",
+        help="legacy environment adapter name",
+    )
+    placement.add_argument(
+        "--deployment",
+        help=(
+            "portable deployment definition JSON; provider and host metadata "
+            "do not enter scientific identity"
+        ),
+    )
     create.add_argument(
         "--variant",
         action="append",

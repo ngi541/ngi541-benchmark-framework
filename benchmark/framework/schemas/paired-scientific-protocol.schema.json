@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/paired-scientific-protocol.schema.json",
+  "title": "NGI541 provider-independent paired scientific protocol",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "protocol",
+    "execution",
+    "analysis"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "protocol": {
+      "type": "object",
+      "required": [
+        "name",
+        "claim_scope"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "claim_scope": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object"
+    },
+    "analysis": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

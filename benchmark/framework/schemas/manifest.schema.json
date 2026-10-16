@@ -23,7 +23,6 @@
       "required": [
         "id",
         "workload",
-        "environment",
         "created_at"
       ],
       "properties": {
@@ -48,6 +47,14 @@
         "created_at": {
           "type": "string",
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+        },
+        "scientific_definition_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*-[0-9a-f]{12}$"
+        },
+        "scientific_identity_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         }
       },
       "additionalProperties": false
@@ -113,7 +120,7 @@
       "properties": {
         "class": {
           "type": "string",
-          "pattern": "^T[0-9]+$"
+          "pattern": "^(T[0-9]+|[a-z0-9][a-z0-9-]*)$"
         },
         "nodes": {
           "type": "object",
@@ -135,7 +142,8 @@
                     "dut",
                     "upstream",
                     "controller",
-                    "observer"
+                    "observer",
+                    "loadgen"
                   ]
                 }
               },
@@ -234,6 +242,34 @@
     "extensions": {
       "type": "object",
       "additionalProperties": true
+    },
+    "deployment": {
+      "type": "object",
+      "required": [
+        "name",
+        "provider",
+        "topology_class",
+        "definition_sha256"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "provider": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "topology_class": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "definition_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

@@ -14,6 +14,7 @@ from framework.ids import (
 )
 from framework.io_utils import FrameworkError, read_json
 from framework.host_state import normalize_measurement_control
+from framework.deployment import normalize_deployment_definition
 
 
 COMMON_DIRS = (
@@ -39,7 +40,7 @@ SEALED_STATES = {
 
 
 def validate_request(request: dict[str, Any]) -> None:
-    required = {"workload", "environment", "variants", "parameters"}
+    required = {"workload", "variants", "parameters"}
     missing = required.difference(request)
     if missing:
         raise FrameworkError(
@@ -49,8 +50,19 @@ def validate_request(request: dict[str, Any]) -> None:
     if not SLUG_RE.fullmatch(str(request["workload"])):
         raise FrameworkError("invalid workload identifier")
 
-    if not SLUG_RE.fullmatch(str(request["environment"])):
-        raise FrameworkError("invalid environment identifier")
+    has_environment = "environment" in request
+    has_deployment = "deployment" in request
+
+    if has_environment == has_deployment:
+        raise FrameworkError(
+            "request must contain exactly one of environment or deployment"
+        )
+
+    if has_environment:
+        if not SLUG_RE.fullmatch(str(request["environment"])):
+            raise FrameworkError("invalid environment identifier")
+    else:
+        normalize_deployment_definition(request["deployment"])
 
     variants = request["variants"]
     if not isinstance(variants, list) or not variants:

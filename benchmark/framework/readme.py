@@ -46,6 +46,16 @@ def generate_prepared_readme(experiment_dir: Path) -> str:
         if untracked_sources else "none"
     )
 
+    if "environment" in exp:
+        placement_line = f"environment: {exp['environment']}"
+    else:
+        deployment = manifest.get("deployment", {})
+        placement_line = (
+            "deployment: "
+            f"{deployment.get('provider', 'unknown')}/"
+            f"{deployment.get('name', 'unknown')}"
+        )
+
     return f"""# {exp["id"]}
 
 Generated NGI541 experiment record.
@@ -55,7 +65,7 @@ Generated NGI541 experiment record.
 ```text
 state: READY
 workload: {exp["workload"]}
-environment: {exp["environment"]}
+{placement_line}
 topology: {topology["class"]}
 planned runs: {len(schedule["runs"])}
 comparison mode: {schedule["comparison_mode"]}

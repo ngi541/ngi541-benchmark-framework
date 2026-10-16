@@ -121,3 +121,9 @@ access.mode: local | ssh
 The initial machine-readable descriptor is `environments/local/single-host.json`.
 
 Portability P1 introduces this contract without rewiring the historical `environment = local` execution path. Runtime migration is performed separately so that historical campaigns and publication evidence remain reproducible.
+
+## Portable runtime wiring
+
+The generic framework now accepts either the historical `--environment` selector or a portable `--deployment` definition. They are mutually exclusive.
+
+The local provider is implemented through `environments/local/single-host.json`. Provider names and access targets are recorded as deployment provenance and are excluded from scientific experiment identity. Non-local providers remain fail-closed until their adapter is implemented.

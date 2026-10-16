@@ -4,6 +4,11 @@ from pathlib import Path
 from typing import Any
 
 from framework.io_utils import FrameworkError, read_json
+from framework.deployment import deployment_definition_sha256
+from framework.experiment_identity import (
+    scientific_definition_id,
+    scientific_identity_sha256,
+)
 
 
 def _source_component(
@@ -75,15 +80,35 @@ def build_manifest(
             "address": None,
         }
 
-    return {
+    experiment = {
+        "id": experiment_id,
+        "alias": request.get("alias"),
+        "workload": request["workload"],
+        "created_at": state["created_at"],
+    }
+
+    deployment_record = None
+    if "deployment" in request:
+        experiment["scientific_definition_id"] = (
+            scientific_definition_id(request)
+        )
+        experiment["scientific_identity_sha256"] = (
+            scientific_identity_sha256(request)
+        )
+        deployment_record = {
+            "name": adapter["deployment_name"],
+            "provider": adapter["provider"],
+            "topology_class": adapter["topology_class"],
+            "definition_sha256": deployment_definition_sha256(
+                request["deployment"]
+            ),
+        }
+    else:
+        experiment["environment"] = request["environment"]
+
+    result = {
         "schema_version": 1,
-        "experiment": {
-            "id": experiment_id,
-            "alias": request.get("alias"),
-            "workload": request["workload"],
-            "environment": request["environment"],
-            "created_at": state["created_at"],
-        },
+        "experiment": experiment,
         "framework": {
             "repository": "ngi541-nginx",
             "commit": framework_source["commit"],
@@ -132,3 +157,8 @@ def build_manifest(
             },
         },
     }
+
+    if deployment_record is not None:
+        result["deployment"] = deployment_record
+
+    return result

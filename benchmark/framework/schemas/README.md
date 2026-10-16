@@ -107,3 +107,4 @@ concurrency, worker, coverage or target selection.
 
 - `deployment.schema.json` — provider/deployment metadata and canonical `dut` / `loadgen` node-role assignment. Deployment is provenance, not scientific identity.
 - `scientific-experiment-identity.schema.json` — provider-independent scientific definition projection used to derive a stable scientific identity without host, provider, or allocation names.
+- `paired-scientific-protocol.schema.json` — provider-independent paired methodology contract separated from deployment bindings.

@@ -74,3 +74,11 @@ P1 does not change:
 - publication artifacts.
 
 Runtime wiring of the new deployment contract is a later milestone. That migration must preserve compatibility with historical experiment directories while ensuring new canonical executions do not encode provider names in scientific identity.
+
+## P2 runtime wiring
+
+Portable generic experiments may now be created with `--deployment <definition.json>` instead of the legacy `--environment` selector. The resulting experiment ID uses the provider-independent scientific identity hash rather than an environment/provider slug.
+
+The legacy `--environment` path remains supported without changing historical experiment IDs. P2 realizes the canonical local single-host deployment. Non-local providers fail closed until a real adapter exists.
+
+The accepted R6.5.4.5 methodology is also projected into `benchmark/protocols/http3-paired-r6.5.4.5.json`, which contains measurement and analysis semantics but no deployment binding. Historical R6.5.4.5 configs remain unchanged provenance.

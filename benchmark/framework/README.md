@@ -371,3 +371,18 @@ The scientific result ID is stable for the accepted frozen execution. A separate
 
 
 For publication figures, delta sign semantics are metric-aware. Goodput uses `(ngi541-direct - stock) / stock`, so positive means higher goodput. CPU cost per delivered GiB and estimated energy per delivered GiB use `(stock - ngi541-direct) / stock`, so positive means lower resource cost for `ngi541-direct`, while negative means higher resource cost. The generated SVG axis labels and subtitles state this explicitly.
+
+## Portable experiment creation
+
+New provider-independent experiments can use a deployment definition:
+
+```bash
+./scripts/experiment.sh create \\
+  --workload http3 \\
+  --deployment environments/local/single-host.json \\
+  --variant stock \\
+  --variant ngi541-direct \\
+  --repetitions 2
+```
+
+The scientific identity excludes deployment provider, host names, SSH targets, hardware inventory, and aliases. The historical `--environment` form remains supported for frozen campaigns.

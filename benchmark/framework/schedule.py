@@ -61,7 +61,6 @@ def resolve_common_request(request: dict[str, Any]) -> dict[str, Any]:
 
     resolved = {
         "workload": request["workload"],
-        "environment": request["environment"],
         "variants": list(variants),
         "parameters": parameters,
         "comparison": {
@@ -69,6 +68,11 @@ def resolve_common_request(request: dict[str, Any]) -> dict[str, Any]:
             "random_seed": random_seed if comparison_mode == "randomized" else None,
         },
     }
+
+    if "environment" in request:
+        resolved["environment"] = request["environment"]
+    else:
+        resolved["deployment"] = request["deployment"]
 
     if request.get("alias") is not None:
         resolved["alias"] = request["alias"]

@@ -61,3 +61,35 @@ def generate_experiment_id(
         raise ValueError(f"generated invalid experiment id: {result}")
 
     return result
+
+def generate_portable_experiment_id(
+    workload: str,
+    scientific_identity_sha256: str,
+    *,
+    now: datetime | None = None,
+    short_id: str | None = None,
+) -> str:
+    validate_slug(workload, "workload")
+
+    if not re.fullmatch(r"[a-f0-9]{64}", scientific_identity_sha256):
+        raise ValueError(
+            "scientific_identity_sha256 must contain exactly 64 lowercase hexadecimal characters"
+        )
+
+    if short_id is None:
+        short_id = secrets.token_hex(3)
+
+    if not re.fullmatch(r"[a-f0-9]{6}", short_id):
+        raise ValueError(
+            "short_id must contain exactly six lowercase hexadecimal characters"
+        )
+
+    result = (
+        f"{workload}-{scientific_identity_sha256[:12]}-"
+        f"{utc_timestamp_for_id(now)}-{short_id}"
+    )
+
+    if not EXPERIMENT_ID_RE.fullmatch(result):
+        raise ValueError(f"generated invalid portable experiment id: {result}")
+
+    return result

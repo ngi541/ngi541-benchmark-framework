@@ -88,3 +88,7 @@ environments/local/single-host.json
 It assigns the canonical roles `dut` and `loadgen` to one local node. The provider (`local`) is deployment metadata and is intentionally excluded from scientific experiment identity.
 
 Future CloudLab or manually allocated bare-metal adapters must realize the same role contract rather than introducing provider names into benchmark identity.
+
+## Runtime support
+
+The portable deployment contract is now wired into the generic experiment lifecycle. `local-single-host` is the first realized provider. CloudLab and manually allocated bare metal must implement the same `dut` / `loadgen` role contract; provider-specific allocation data must remain deployment provenance.

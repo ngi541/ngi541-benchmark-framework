@@ -9,6 +9,7 @@ from typing import Any
 
 from framework.ids import utc_rfc3339
 from framework.io_utils import FrameworkError, atomic_write_json
+from framework.deployment import normalize_deployment_definition
 
 
 def _run_text(argv: list[str]) -> str | None:
@@ -255,10 +256,78 @@ def prepare_local_environment(
     return adapter
 
 
+def prepare_deployment_environment(
+    experiment_dir: Path,
+    deployment: dict[str, Any],
+) -> dict[str, Any]:
+    definition = normalize_deployment_definition(deployment)
+    metadata = definition["deployment"]
+
+    if metadata["provider"] != "local":
+        raise FrameworkError(
+            "portable deployment provider is not implemented yet: "
+            f"{metadata['provider']}"
+        )
+
+    nodes = definition["nodes"]
+    if len(nodes) != 1:
+        raise FrameworkError(
+            "local portable deployment currently requires exactly one node"
+        )
+
+    node_name, node = next(iter(nodes.items()))
+    if node["access"]["mode"] != "local":
+        raise FrameworkError(
+            "local portable deployment requires local access"
+        )
+
+    nodes_root = experiment_dir / "environment" / "nodes"
+    node_dir = nodes_root / node_name
+    node_dir.mkdir(parents=True, exist_ok=True)
+
+    adapter = {
+        "schema_version": 2,
+        "adapter": "portable-deployment",
+        "provider": metadata["provider"],
+        "deployment_name": metadata["name"],
+        "topology_class": metadata["topology_class"],
+        "nodes": {
+            node_name: {
+                "roles": list(node["roles"]),
+                "access": dict(node["access"]),
+                "data_address": node["data_address"],
+            }
+        },
+    }
+
+    atomic_write_json(
+        experiment_dir / "environment" / "adapter.json",
+        adapter,
+    )
+    atomic_write_json(node_dir / "system.json", collect_system())
+    atomic_write_json(node_dir / "cpu.json", collect_cpu())
+    atomic_write_json(node_dir / "memory.json", collect_memory())
+    atomic_write_json(node_dir / "network.json", collect_network())
+
+    return adapter
+
+
 def prepare_environment(
     experiment_dir: Path,
-    environment_name: str,
+    environment_name: str | None = None,
+    deployment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if (environment_name is None) == (deployment is None):
+        raise FrameworkError(
+            "prepare_environment requires exactly one of environment_name or deployment"
+        )
+
+    if deployment is not None:
+        return prepare_deployment_environment(
+            experiment_dir,
+            deployment,
+        )
+
     if environment_name == "local":
         return prepare_local_environment(experiment_dir)
 
