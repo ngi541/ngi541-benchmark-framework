@@ -1,110 +1,33 @@
-# Config-driven campaigns
+# Config-driven experiment campaigns
 
-The `campaign` command drives a versioned experiment definition through the
-framework lifecycle without bypassing any validation or provenance step.
+A `campaign` is a **specific normalized experiment definition** that may drive the generic framework state machine from creation through preparation, sealing, measured execution, deterministic analysis and final validation. The campaign interface is **not interchangeable** with an individual scientific qualification definition.
 
-```bash
-./scripts/experiment.sh campaign \
-  --config <campaign-config.json>
-```
-
-A campaign definition is a research artifact. It contains the fixed workload
-parameters, explicit ordered conditions, repetitions, comparison mode, runtime
-artifact identities, and source requirements required by that campaign.
-
-## Lifecycle
-
-The orchestrator advances only through legal lifecycle transitions:
-
-```text
-create
-  -> plan
-  -> prepare
-  -> seal
-  -> validate
-  -> execute
-  -> validate
-  -> analyze
-  -> COMPLETE
-```
-
-The campaign command does not replace the underlying lifecycle artifacts. It
-only determines the next valid stage.
-
-## Resume semantics
-
-The normalized campaign definition is hashed with SHA-256 and snapshotted as
-`config/campaign.json` inside the generated experiment instance.
-
-Re-running the same campaign definition follows these rules:
-
-- exactly one incomplete match: resume it;
-- an exact COMPLETE match: validate it and return without creating a duplicate;
-- multiple incomplete matches: fail and require `--experiment-id`;
-- same campaign name with a different definition: fail to prevent silent drift;
-- `--new`: intentionally create a distinct execution instance.
-
-Examples:
+## Entry point
 
 ```bash
-# Start or automatically resume.
 ./scripts/experiment.sh campaign \
-  --config <campaign-config.json>
-
-# Resume one exact experiment explicitly.
-./scripts/experiment.sh campaign \
-  --config <campaign-config.json> \
-  --experiment-id <experiment-id>
-
-# Intentionally create another instance.
-./scripts/experiment.sh campaign \
-  --config <campaign-config.json> \
-  --new
+  --config /path/to/valid-campaign-definition.json
 ```
 
-A run failure is not automatically retried inside the same invocation.
-Failed attempts remain append-only execution evidence. A later explicit resume
-continues according to the frozen schedule and validity rules.
+The campaign file must conform to the framework's campaign definition contract, with workload parameters, explicit conditions, comparison policy, source/runtime identities and any applicable host measurement controls. The `benchmark/configs/r6.5.4.5-pi-mac-paired-scientific-execution.json` file belongs to **`paired-execution --config`**, not to `campaign`.
 
-## Framework identity after sealing
+## State transitions and artifacts
 
-For an active sealed campaign, resume is refused when the current framework
-identity differs from the identity sealed into the experiment manifest. This
-prevents execution or analysis from silently continuing with a different
-framework implementation.
+`create` persists request identity → `plan` persists the complete schedule → `prepare` inventories/validates sources, binaries and hosts → `seal` freezes provenance and experiment manifest → `execute` collects append-only attempts → `analyze` deterministically selects structurally valid attempts and generates paired results → `COMPLETE` is validated, not simply asserted.
 
-## Explicit conditions
+## Resume and change detection
 
-`experiment.conditions` is an ordered list of exact workload conditions, not a
-Cartesian product. Fixed parameters live in `experiment.parameters`. A
-parameter name must not appear in both places.
+- A matching incomplete campaign can resume through the next legal stage.
+- A matching complete campaign is independently validated rather than regenerated.
+- More than one compatible incomplete instance requires an explicit `--experiment-id`.
+- Same campaign name with incompatible definition cannot silently resume.
+- `--new` intentionally allocates another instance of the accepted definition.
+- Once sealed, the framework implementation identity is checked on resume to prevent analysis or execution by silently changed code.
 
-This distinction is important for controlled paired experiments because the
-condition set is part of the frozen scientific definition.
+An execution failure is not automatically retried on the basis of low goodput or high CPU cost. Operational failures and all attempts remain observable.
 
-## Runtime identity
+## Scientific claim policy
 
-Every configured executable or shared library has an expected SHA-256.
-Preparation and resumed execution verify those identities before use, and the
-realized identities are recorded in provenance.
+A generic campaign may have a different workload or repetition count. Only a campaign that *satisfies the accepted frozen HTTP/3 protocol* can support claims under R6.5.4.5. The generic two-repetition local CLI example is a smoke test, not a substitute for the four-pair controlled scientific execution.
 
-## Scheduling and measurement control
-
-Campaign definitions may include deterministic scheduling and host-readiness
-controls, including:
-
-```json
-{
-  "scheduling": {
-    "condition_order": "rotating-rounds",
-    "variant_order": "balanced-by-condition-round"
-  }
-}
-```
-
-Measurement-control fields may define host telemetry/readiness, idle
-calibration, runtime artifact staging/cleanup, and analysis warning thresholds.
-
-These controls are part of the normalized campaign definition. Changing them
-changes the campaign identity and therefore cannot silently resume a different
-frozen experiment.
+See [lifecycle](experiment-lifecycle.md), [experiment schema](experiment-schema.md) and [analysis](analysis.md).

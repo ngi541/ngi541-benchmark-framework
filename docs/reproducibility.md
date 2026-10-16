@@ -1,142 +1,39 @@
-# Reproducibility model
+# Reproducibility, artifact identity and claim provenance
 
-NGI541 treats reproducibility as a chain from source identity to published claim.
+## What can be reproduced
 
-The goal is not only to preserve a benchmark result, but to make the relationship between implementation, environment, workload, measurement, and interpretation auditable.
+**Framework validation:** Python-standard-library tests and syntax checks can run without NGINX binaries or benchmark hosts. They establish implementation-level invariants, not measured acceleration.
 
-## Reproducibility layers
+**Portable lifecycle smoke:** `create --deployment environments/local/single-host.json` and `plan <experiment-id>` generate an experiment identity and deterministic run order without a network benchmark. It is not a four-repetition controlled campaign.
 
-### Source and dependency identity
+**Functional integration:** pinned dependencies, NGI541 engine installation, NGINX/QUIC build and regression tests establish working TLS/HTTP/3 integration. Functional correctness alone is not performance evidence.
 
-Experiments must record immutable NGI541 and integration revisions together with pinned external dependency versions.
+**Controlled scientific execution:** qualification, frozen source/corpus/runtime SHA-256, reference topology, predeclared schedule, paired measurement, deterministic analysis and publication verification are all required. The current executable reference configs are environment-specific.
 
-Where downloaded source archives are used, checksums should be recorded and verified.
+## Claim traceability
 
-### Build identity
+An externally auditable result must identify, at minimum:
 
-The build profile must record:
+| Class | Required record |
+| --- | --- |
+| Scientific definition | Frozen protocol version and SHA-256, workload object profile/corpus digest, condition set, pairing policy |
+| Source/runtime | Exact Git revisions, NGINX/NGI541/library/toolchain SHA-256 and patches |
+| Deployment | Client/DUT hardware roles, CPU/ISA, OS, NIC, NUMA, network capacity, frequency/thermal policy |
+| Qualification | Network, load generator, HTTP/3/TLS, corpus and host telemetry gates |
+| Raw evidence | Complete ordered run/attempt records, failure reasons, timing, HTTP counts, host sensors |
+| Analysis | Accepted-attempt selection, within-condition pairs, metric definitions, summary and derived figures |
+| Publication | Revalidated result bundle, SHA manifest and stable external archive identifier **once issued** |
 
-- compiler identity;
-- relevant compiler flags;
-- feature configuration;
-- dependency inputs;
-- install/build mode when it can affect runtime behavior.
+## Non-negotiable validity rules
 
-Produced runtime binaries or shared libraries should be fingerprinted when they are part of an experiment.
+Four paired repetitions per condition, balanced/rotating order, strict main measurement interval, zero HTTP failures, no throttling, ≤85% client total CPU and ≤95% client busiest-core CPU, no metric-dependent retry and retention of all valid samples. Baseline workload planning must complete before seeing candidate performance. Any material deviation must be disclosed as a different methodology, not silently labeled R6.5.4.5.
 
-### Execution environment
+## Current local result record
 
-Hardware, operating system, CPU topology, relevant ISA capabilities, and network topology must be recorded.
+A previously accepted bandwidth-limited local paired execution reported ~8.216% lower DUT CPU seconds/GiB, 44/48 CPU-cost pair wins, approximately unchanged application goodput and ~0.248% lower **estimated** energy/GiB. The repository does not currently supply a public Zenodo DOI or raw archive URL for those figures; this statement is a **local evidence summary**, not a substitute for independently inspectable preserved measurement data. Once an external archive is verified, its DOI and artifact SHA can be placed in `README.md` and the release record.
 
-Performance-sensitive host configuration should be explicit whenever it can materially affect the result.
+## Immutability and deterministic derivatives
 
-This may include:
+Inputs, schedule and manifest are frozen, raw attempts append-only, lifecycle state explicitly mutable, and summaries/plots deterministically regenerated from the raw/schedule pair. A different deployment has different provenance even if the same protocol hash is used. A successful `results --experiment` export validates the chain and creates a publication bundle under ignored `artifacts/results/`.
 
-```text
-CPU affinity
-NUMA placement
-CPU frequency policy
-IRQ placement
-NIC assignment
-PMU availability
-```
-
-### Experiment identity
-
-The workload and measurement protocol must be described by an immutable experiment manifest.
-
-Raw measurements are preserved as experiment artifacts.
-
-### Evidence identity
-
-A project claim is separate from the experiment itself.
-
-The evidence layer states which measurements support the claim and defines the claim's scope and limitations.
-
-The intended provenance chain is:
-
-```text
-source revision
-    ↓
-dependency identity
-    ↓
-build profile
-    ↓
-binary/runtime fingerprint
-    ↓
-execution environment
-    ↓
-workload parameters
-    ↓
-raw measurements
-    ↓
-deterministic analysis
-    ↓
-accepted evidence
-    ↓
-project claim
-```
-
-## Source repository and generated research data
-
-The source repository contains reusable framework code and active scientific
-definitions.
-
-Concrete experiment instances, qualifications, generated corpora, build trees,
-and publication bundles are generated research data. They are preserved as
-research outputs when needed, but they are not tracked as source files on
-`main`.
-
-Repository history is preserved by Git commits and release tags rather than by
-duplicating obsolete layouts inside the current tree.
-
-## Current reproducibility boundary
-
-The NGI541 NGINX integration uses pinned source dependencies, an exact integration patch, and automated build and regression validation.
-
-This provides source- and dependency-pinned reproducibility in a validated environment.
-
-It is not currently a bit-for-bit hermetic build guarantee.
-
-Host toolchains, operating-system packages, SDKs, linkers, and platform details may still affect produced binary bytes.
-
-## Sensitive material
-
-Private keys, credentials, access tokens, CloudLab credentials, and other secrets must never be committed as experiment evidence.
-
-Ephemeral certificates required by protocol tests should be generated by the execution environment or test harness.
-
-## Acceptance rule
-
-A performance experiment is eligible to support canonical evidence only when:
-
-```text
-correctness validation passes
-source and dependency identity are known
-environment and topology are recorded
-workload parameters are explicit
-raw measurements are preserved
-analysis is reproducible
-claim scope matches the measured data
-```
-
-## Relationship to repository layers
-
-The repository separates reusable machinery, execution environment, concrete campaigns, and accepted claims:
-
-```text
-benchmark/      reusable scientific machinery and active definitions
-environments/   deployment descriptors
-integration/    NGINX integration patches, tests, and pinned versions
-scripts/        build, test, dependency, and experiment entry points
-```
-
-Concrete experiments and publication artifacts are generated outside the
-tracked source surface.
-
-See also:
-
-- [`benchmark-methodology.md`](benchmark-methodology.md)
-- [`topology.md`](topology.md)
-- [`experimental-scope.md`](experimental-scope.md)
-- [`integration-model.md`](integration-model.md)
+See [analysis](analysis.md), [experiment schema](experiment-schema.md), [portability](portability-contract.md) and [experimental scope](experimental-scope.md).

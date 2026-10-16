@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1420" height="836" viewBox="0 0 1420 836" role="img" aria-labelledby="ttl desc">
+<title id="ttl">NGI541 controlled HTTP/3 comparison topology</title>
+<desc id="desc">One load generator and fixed scientific corpus send HTTP/3 requests through the same network topology to one NGINX device under test. The baseline OpenSSL QUIC path and NGI541-integrated server-side QUIC path execute as separate sequential paired runs. Same client and workload. A frozen protocol controls ordering and validity. Collected metrics include delivered goodput, server CPU seconds per GiB, energy estimates, load generator CPU headroom and host telemetry.</desc>
+<rect x="0" y="0" width="1420" height="836" rx="0" fill="#F5F8FC" stroke="#F5F8FC" stroke-width="0"/>
+<rect x="28" y="26" width="1364" height="92" rx="19" fill="#112D4F" stroke="#112D4F" stroke-width="2"/>
+<text x="56" y="65" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" text-anchor="start" letter-spacing="0">NGI541  /  CONTROLLED HTTP/3 COMPARISON</text>
+<text x="57" y="98" fill="#BBD5EB" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="400" text-anchor="start" letter-spacing="0">Same workload · same network path · server-side cryptographic substitution</text>
+<rect x="32" y="147" width="365" height="300" rx="18" fill="#FFFFFF" stroke="#CFD9E5" stroke-width="2"/>
+<text x="59" y="185" fill="#4E6684" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" text-anchor="start" letter-spacing="0">01  SCIENTIFIC INPUT</text>
+<rect x="53" y="206" width="323" height="92" rx="12" fill="#E9F1F9" stroke="#ADC4DC" stroke-width="2"/>
+<text x="75" y="243" fill="#112D4F" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" text-anchor="start" letter-spacing="0">Deterministic object corpus</text>
+<text x="75" y="271" fill="#335A77" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="500" text-anchor="start" letter-spacing="0">CLAS12 · LCLS · HACC styles</text>
+<rect x="53" y="314" width="323" height="112" rx="12" fill="#E9F1F9" stroke="#ADC4DC" stroke-width="2"/>
+<text x="75" y="353" fill="#112D4F" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700" text-anchor="start" letter-spacing="0">Load generator</text>
+<text x="75" y="383" fill="#335A77" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="500" text-anchor="start" letter-spacing="0">Pinned HTTP/3 client runtime</text>
+<text x="75" y="406" fill="#53738C" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="500" text-anchor="start" letter-spacing="0">Identical for both run variants</text>
+<rect x="441" y="208" width="145" height="218" rx="16" fill="#EDF4F9" stroke="#B0C5D9" stroke-width="2"/>
+<text x="514" y="255" fill="#4E6684" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" text-anchor="middle" letter-spacing="0">02</text>
+<text x="514" y="291" fill="#132F4F" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" text-anchor="middle" letter-spacing="0">HTTP/3</text>
+<text x="514" y="323" fill="#31587B" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" text-anchor="middle" letter-spacing="0">over QUIC</text>
+<text x="514" y="368" fill="#607F99" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="500" text-anchor="middle" letter-spacing="0">same path</text>
+<path d="M397 333 L438 333" stroke="#56799A" stroke-width="3" fill="none"/>
+<path d="M427,327 L438,333 L427,339" fill="none" stroke="#56799A" stroke-width="3" stroke-linejoin="round"/>
+<path d="M589 333 L641 333" stroke="#56799A" stroke-width="3" fill="none"/>
+<path d="M630,327 L641,333 L630,339" fill="none" stroke="#56799A" stroke-width="3" stroke-linejoin="round"/>
+<rect x="642" y="147" width="747" height="301" rx="18" fill="#FFFFFF" stroke="#CFD9E5" stroke-width="2"/>
+<text x="670" y="185" fill="#4E6684" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" text-anchor="start" letter-spacing="0">03  NGINX DEVICE UNDER TEST  (SAME SERVER ROLE)</text>
+<rect x="661" y="204" width="340" height="159" rx="14" fill="#EDF5FF" stroke="#85B2E7" stroke-width="2"/>
+<rect x="1022" y="204" width="343" height="159" rx="14" fill="#EFFAF5" stroke="#7FCBAC" stroke-width="2"/>
+<text x="685" y="238" fill="#3E70AA" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" text-anchor="start" letter-spacing="0">A  /  BASELINE</text>
+<text x="685" y="268" fill="#133556" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" text-anchor="start" letter-spacing="0">NGINX + OpenSSL</text>
+<text x="685" y="296" fill="#335A7B" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="500" text-anchor="start" letter-spacing="0">native QUIC crypto path</text>
+<text x="685" y="328" fill="#4A7197" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="500" text-anchor="start" letter-spacing="0">internal label: stock</text>
+<text x="1046" y="238" fill="#27876A" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" text-anchor="start" letter-spacing="0">B  /  CANDIDATE</text>
+<text x="1046" y="268" fill="#133556" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" text-anchor="start" letter-spacing="0">NGINX + NGI541</text>
+<text x="1046" y="296" fill="#335A7B" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="500" text-anchor="start" letter-spacing="0">QUIC packet / header protection</text>
+<text x="1046" y="328" fill="#348D76" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="500" text-anchor="start" letter-spacing="0">internal label: ngi541-direct</text>
+<text x="674" y="396" fill="#4E6684" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="500" text-anchor="start" letter-spacing="0">Runs A and B are separate paired measurements — not two concurrent server paths.</text>
+<text x="674" y="421" fill="#57728A" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="500" text-anchor="start" letter-spacing="0">TLS 1.3 handshake, certificate validation and QUIC protocol logic remain in NGINX/OpenSSL.</text>
+<rect x="32" y="476" width="1357" height="311" rx="18" fill="#FFFFFF" stroke="#CFD9E5" stroke-width="2"/>
+<text x="60" y="516" fill="#4E6684" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" text-anchor="start" letter-spacing="0">04  CONTROLLED EXECUTION AND RECORDED EVIDENCE</text>
+<rect x="55" y="538" width="618" height="217" rx="12" fill="#F1F4F9" stroke="#CBD7E4" stroke-width="2"/>
+<text x="77" y="576" fill="#112D4F" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700" text-anchor="start" letter-spacing="0">Frozen experimental protocol</text>
+<text x="77" y="608" fill="#385A77" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" text-anchor="start" letter-spacing="0">4 paired repetitions per condition</text>
+<text x="77" y="636" fill="#385A77" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" text-anchor="start" letter-spacing="0">Balanced variant / condition order</text>
+<text x="77" y="664" fill="#385A77" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" text-anchor="start" letter-spacing="0">Qualification + validity gates</text>
+<text x="77" y="692" fill="#385A77" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" text-anchor="start" letter-spacing="0">Immutable schedule, inputs and hashes</text>
+<text x="77" y="729" fill="#607F97" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="500" text-anchor="start" letter-spacing="0">No metric-dependent retry or sample exclusion</text>
+<rect x="695" y="538" width="666" height="217" rx="12" fill="#F1F8F6" stroke="#B8D5CA" stroke-width="2"/>
+<text x="719" y="576" fill="#112D4F" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700" text-anchor="start" letter-spacing="0">Outputs / analysis</text>
+<text x="719" y="608" fill="#336658" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" text-anchor="start" letter-spacing="0">Application goodput (Mb/s)</text>
+<text x="719" y="636" fill="#336658" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" text-anchor="start" letter-spacing="0">DUT process CPU seconds / delivered GiB</text>
+<text x="719" y="664" fill="#336658" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" text-anchor="start" letter-spacing="0">Estimated energy / GiB (where supported)</text>
+<text x="719" y="692" fill="#336658" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" text-anchor="start" letter-spacing="0">Load-generator CPU headroom</text>
+<text x="719" y="720" fill="#336658" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" text-anchor="start" letter-spacing="0">Run validity · host telemetry · raw evidence</text>
+<text x="60" y="813" fill="#586D84" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="500" text-anchor="start" letter-spacing="0">Server-side data-path experiment — not a cryptographic primitive-only benchmark</text>
+</svg>

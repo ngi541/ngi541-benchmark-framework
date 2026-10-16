@@ -1,233 +1,97 @@
 # NGI541 Benchmark Framework
 
-[![CI](https://github.com/ngi541/ngi541-benchmark-framework/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ngi541/ngi541-benchmark-framework/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![NGI541](https://img.shields.io/badge/NGI541-0.1.1-blue)](https://github.com/ngi541/ngi541)
+[![CI](https://github.com/ngi541/ngi541-benchmark-framework/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ngi541/ngi541-benchmark-framework/actions/workflows/ci.yml) · [Apache-2.0](LICENSE) · [NGI541 engine](https://github.com/ngi541/ngi541)
 
-**NGI541 Benchmark Framework is a reproducibility-first experimental framework for evaluating cryptographic execution inside real network data paths.**
+**Reproducibility-first experimental framework for controlled measurement of cryptographic execution in network data paths.** Its implemented reference experiment measures the system-level effect of replacing **server-side NGINX QUIC packet and header protection** with the [NGI541](https://github.com/ngi541/ngi541) cryptographic execution engine, while preserving HTTP/3 workload and TLS protocol semantics.
 
-The current reference workload integrates the [NGI541](https://github.com/ngi541/ngi541) cryptographic execution engine into NGINX QUIC/HTTP/3 and compares it with the stock cryptographic path under controlled, paired conditions.
+The repository supplies executable NGINX integration patches, pinned dependencies, deterministic scientific object profiles, host/network qualification, balanced paired execution, telemetry, analysis and publication-artifact verification. It is **not** the NGI541 cryptographic library and does not report microbenchmark-only primitive throughput as application performance.
 
-This repository is not the NGI541 cryptographic library itself. It provides the **experimental methodology, workload integration, qualification gates, execution lifecycle, telemetry, analysis, and publication tooling** used to evaluate NGI541 in end-to-end networking workloads.
+## Implemented comparison
 
-> [!IMPORTANT]
-> This project is independent of ESnet, the U.S. Department of Energy, CloudLab, and the National Science Foundation. References to those infrastructures describe scientific motivation or intended experimental environments and do not imply affiliation, endorsement, or deployment on those systems.
+| Controlled component | Baseline server | NGI541-integrated server |
+| --- | --- | --- |
+| NGINX / HTTP/3 / QUIC protocol implementation | NGINX | Same NGINX integration base |
+| TLS 1.3 handshake, certificates and key derivation | OpenSSL | OpenSSL, unchanged in ownership |
+| QUIC authenticated packet protection (AES-GCM) | Standard OpenSSL-backed QUIC crypto path | NGI541 direct prepared-key API |
+| AES-based QUIC header-protection mask | Standard crypto path | NGI541 AES execution |
+| Client and network path | Same pinned load generator and topology | Same |
+| Scientific corpus and measurement protocol | Frozen before comparison | Identical frozen inputs and rules |
 
-## Why this framework exists
+The internal configuration identifiers are **`stock`** (baseline OpenSSL/NGINX path) and **`ngi541-direct`** (NGI541-integrated server path). These are *separate, sequentially scheduled server configurations*, not concurrent backends serving half the traffic. The HTTP/3 client is not modified between pair members. NGINX/OpenSSL retain TLS 1.3 handshake and protocol state; only the specified server-side QUIC cryptographic operations are substituted.
 
-High-performance scientific computing increasingly depends on moving large data sets between instruments, laboratories, edge systems, analysis facilities, GPU clusters, and HPC centers.
+## Measurement topology
 
-The [ESnet Science DMZ](https://fasterdata.es.net/science-dmz/) model and its dedicated [Data Transfer Node](https://www.es.net/science-engagement/technical-and-consulting-services/data-transfer-nodes/) architecture provide an important external context for this work: scientific data movement requires both high throughput and security mechanisms that do not become the dominant data-path bottleneck.
+![NGI541 HTTP/3 benchmark: scientific corpus → pinned client → HTTP/3/QUIC → paired NGINX server paths → controls and measured evidence](docs/assets/framework-overview.svg)
 
-NGI541 explores a narrower systems question:
+The diagram distinguishes the controlled client/workload, the server-only cryptographic substitution, balanced experiment scheduling and the recorded measurements. A high-resolution [PNG version](docs/assets/framework-overview.png) is also available.
 
-> **Can a performance-oriented cryptographic execution engine reduce the CPU cost of authenticated encryption in real network data paths while preserving protocol correctness, transport behavior, and application-level throughput?**
+## Current experimental evidence
 
-The benchmark framework exists to make that question testable with controlled and independently inspectable evidence.
+The accepted **local controlled paired campaign** previously produced the following reported observations:
 
-## What the framework measures
+| Metric | Local result | Interpretation |
+| --- | --- | --- |
+| DUT process CPU cost per delivered GiB | **approximately 8.216% lower** for `ngi541-direct` | Lower measured server CPU cost for the same delivered workload |
+| Paired CPU-cost outcomes | **44 of 48 pairs** favored `ngi541-direct` | Direction of effect across valid matched observations; not a cross-platform claim |
+| Application goodput | **approximately 0% difference** | Throughput was dominated by the qualified network envelope |
+| Estimated energy per delivered GiB | **approximately 0.248% lower** | Small, estimate-based effect; not an external power-meter measurement |
 
-The current implemented path is:
+**Evidence scope:** these numbers belong to the recorded, bandwidth-limited local DUT/load-generator execution; they are **not** high-speed datacenter, HPC, or ESnet performance claims. The exact experiment manifest, raw data, validity results and publication bundle are the authority for any formal quantitative statement. An archival DOI will be linked here **after** the artifact is deposited and verified; no DOI is assigned in this source tree.
 
-```text
-scientific workload
-        |
-        v
-HTTP/3 over QUIC
-        |
-        v
-NGINX
-   |             |
-   | stock       | ngi541-direct
-   v             v
-OpenSSL       NGI541
-QUIC crypto   QUIC packet protection
-   |             |
-   +------ paired execution ------+
-                  |
-                  v
-     application goodput
-     CPU cost per delivered GiB
-     estimated energy per GiB
-     load-generator headroom
-     validity / telemetry evidence
-```
-
-For AES-based QUIC cipher suites, the `ngi541-direct` variant routes QUIC packet protection through NGI541 while NGINX/OpenSSL continue to provide the surrounding TLS 1.3, certificate, and protocol machinery.
-
-The framework is designed to evaluate the **system effect of cryptographic execution inside an application network path**, rather than only isolated primitive throughput.
-
-## Scientific controls
-
-The framework does not treat one benchmark number as sufficient evidence. The current methodology includes explicit controls intended to reduce experimenter and selection bias:
-
-- **provider-independent scientific protocol** separated from deployment details;
-- **deterministic scientific workload definitions**;
-- **network qualification before application benchmarking**;
-- **transport-security qualification before performance measurement**;
-- **dual-host telemetry and validity gates**;
-- **workload planning against the stock variant only**;
-- **frozen workload and artifact identities before paired execution**;
-- **balanced paired scheduling** between `stock` and `ngi541-direct`;
-- **predeclared primary and secondary metrics**;
-- **no candidate-driven adaptive tuning**;
-- **no metric-dependent automatic retry**;
-- **no metric-dependent outlier deletion**;
-- **append-only raw execution evidence**;
-- **SHA-256 identity for frozen inputs and generated result artifacts**;
-- **deterministic analysis from preserved measurements**.
-
-These controls improve reproducibility and resistance to common benchmark biases. They do **not** make a benchmark universally representative: every performance claim remains scoped to the hardware, topology, software revisions, protocol, workload, and validity envelope recorded by the experiment.
-
-## Current scientific protocol
-
-The current provider-independent protocol is:
-
-```text
-benchmark/protocols/http3-paired-r6.5.4.5.json
-```
-
-Canonical SHA-256:
+The *frozen scientific protocol* is [`benchmark/protocols/http3-paired-r6.5.4.5.json`](benchmark/protocols/http3-paired-r6.5.4.5.json), SHA-256:
 
 ```text
 99805dd378310ec539246e655d3f2a690036e4e50ac83c27c52765d1a50fb387
 ```
 
-It freezes the accepted paired HTTP/3 methodology while excluding provider-specific host names, SSH targets, allocation identifiers, and hardware inventory.
+## Scientific data-movement workloads
 
-The corresponding controlled execution compares:
+The corpus is **not a bag of arbitrary random response sizes**. Deterministic generation follows three versioned, science-derived object-shape models:
 
-```text
-stock
-vs.
-ngi541-direct
-```
+| Workload model | Transfer shape represented | Profile definition |
+| --- | --- | --- |
+| **CLAS12 event-stream style** | Event-stream-oriented scientific objects | [`clas12-event-stream-v1.json`](benchmark/scientific-profiles/clas12-event-stream-v1.json) |
+| **LCLS detector-frame style** | Detector-frame-oriented scientific objects | [`lcls-detector-frame-v1.json`](benchmark/scientific-profiles/lcls-detector-frame-v1.json) |
+| **HACC multifile-dataset style** | Multi-object/multifile scientific dataset movement | [`hacc-multifile-dataset-v1.json`](benchmark/scientific-profiles/hacc-multifile-dataset-v1.json) |
 
-using balanced within-condition pairs and four paired repetitions per frozen condition.
+These are **synthetic, reproducible representations inspired by scientific data-transfer characteristics**, not actual detector/HPC datasets, collaboration-certified traces or exhaustive domain validation. The frozen HACC execution repeats a selected planner subset; it is **not** a full-HACC-dataset claim. Their relevance is application delivery over encrypted transport, as in the high-throughput scientific-data-movement and Science DMZ/DTN setting described by [ESnet](https://fasterdata.es.net/science-dmz/); no ESnet deployment or measured equivalence is implied.
 
-## Scientific workload profiles
+## Reproducibility and validity contract
 
-The current framework contains deterministic workload profiles modeled from published characteristics of three data-intensive scientific use cases:
+| Control | Enforced behavior / failure condition |
+| --- | --- |
+| Workload selection | Calibrated **only against baseline** before NGI541 measurement; no candidate-driven tuning |
+| Experimental identity | Frozen protocol and immutable input/schedule/runtime SHA-256 identities; deployment bindings recorded separately |
+| Pairing | **4 paired repetitions per condition**, rotating condition order and balanced variant ordering |
+| Transport validity | HTTP/3 with TLS 1.3, fixed AES-128-GCM cipher selection, peer verification, scientific-object correctness |
+| Measurement integrity | **0 HTTP request failures** allowed; main-window selection excludes warm-up and readiness traffic |
+| DUT/host validity | Throttling invalidates the run; nonblocking DUT sampling and thermal guards |
+| Generator headroom | Aggregate CPU busy **≤85%**, busiest single core **≤95%** |
+| Retries and outliers | **No metric-dependent automatic retry**; retain all structurally valid runs; append-only attempt evidence |
+| Interpretation | Primary: application goodput (Mb/s), DUT process CPU seconds/delivered GiB; secondary: estimated energy/GiB and load-generator CPU headroom; within-condition median paired delta |
 
-- CLAS12 event-stream style objects;
-- LCLS detector-frame style objects;
-- HACC multifile-dataset style objects.
+These controls address specific confounders and selection bias; they do not establish universal hardware or topology representativeness. See [methodology](docs/benchmark-methodology.md), [analysis](docs/analysis.md) and [reproducibility](docs/reproducibility.md).
 
-These are **deterministic benchmark representations**, not copies of experiment data and not claims of official validation by the originating scientific collaborations.
+## Reproduce the framework (no benchmark hardware required)
 
-The workload layer is intended to preserve relevant transfer characteristics while keeping experiment inputs reproducible and content-addressable.
-
-## Current scope and claim boundary
-
-The framework currently provides:
-
-- NGINX QUIC/HTTP/3 integration for NGI541;
-- pinned integration dependencies;
-- network-path qualification;
-- deterministic scientific corpus generation;
-- HTTP/3/TLS transport qualification;
-- host telemetry and readiness checks;
-- stock-only workload calibration;
-- final input freeze;
-- controlled paired execution;
-- deterministic statistical analysis;
-- publication artifact generation;
-- provider-neutral deployment descriptors.
-
-The accepted local development campaign established that the methodology and execution pipeline work end to end. Its network path was intentionally limited and is **not used to claim high-speed datacenter, Science DMZ, ESnet, or HPC performance**.
-
-The next research phase is dedicated high-speed bare-metal evaluation.
-
-## Next target: CloudLab
-
-[CloudLab](https://www.cloudlab.us/) is the next intended execution provider because it offers researcher-controlled bare-metal systems and network topology suitable for reproducible systems experiments.
-
-The planned next phase is to add a CloudLab deployment adapter without changing scientific methodology merely because the provider changes.
-
-The target progression is:
-
-```text
-CloudLab account/project access
-        |
-        v
-provider adapter + reproducible profile
-        |
-        v
-dedicated loadgen <-> DUT topology
-        |
-        v
-CPU / NUMA / NIC / frequency qualification
-        |
-        v
-high-speed network ceiling characterization
-        |
-        v
-frozen HTTP/3 paired campaign
-        |
-        v
-cross-platform Intel / AMD / Arm analysis
-```
-
-CloudLab support is a **roadmap target**, not a current capability.
-
-## Repository structure
-
-```text
-.
-├── benchmark/
-│   ├── configs/               active executable definitions
-│   ├── framework/             experiment lifecycle and analysis engine
-│   ├── protocols/             provider-independent scientific protocols
-│   ├── scientific-profiles/   deterministic scientific workload profiles
-│   └── workloads/http3/       HTTP/3 workload adapter
-├── docs/                      methodology and architecture documentation
-├── environments/              deployment descriptors and provider boundary
-├── integration/
-│   ├── patches/               pinned NGINX / nghttp2 integration patches
-│   ├── tests/                 integration-specific regression tests
-│   └── versions/              pinned dependency revisions
-└── scripts/                   build, test, dependency, and experiment entry points
-```
-
-Generated experiments, scientific corpora, qualification outputs, build trees, and publication bundles are intentionally excluded from source control.
-
-## Quick start: validate the framework
-
-The framework core uses the Python standard library.
+Clone and execute the standard-library test suite:
 
 ```bash
 git clone https://github.com/ngi541/ngi541-benchmark-framework.git
 cd ngi541-benchmark-framework
-
-python3 -m unittest discover \
-  -s benchmark/framework/tests \
-  -p 'test_*.py'
+python3 -m unittest discover -s benchmark/framework/tests -p 'test_*.py'
+python3 -m compileall -q benchmark
 ```
 
-A successful run ends with:
+**What this proves:** schema/lifecycle, deployment identity, scientific corpus, HTTP/3 integration logic, paired-execution invariants, analysis and result-integrity tests pass. **What it does not prove:** an NGINX binary was built, network qualification succeeded, or a real performance measurement occurred.
 
-```text
-OK
-```
-
-Validate Python syntax and the frozen protocol identity:
+Verify the accepted protocol bytes:
 
 ```bash
-python3 -m compileall -q benchmark
-
-shasum -a 256 \
-  benchmark/protocols/http3-paired-r6.5.4.5.json
+shasum -a 256 benchmark/protocols/http3-paired-r6.5.4.5.json
 ```
 
-Expected protocol SHA-256:
-
-```text
-99805dd378310ec539246e655d3f2a690036e4e50ac83c27c52765d1a50fb387
-```
-
-## Quick start: exercise the portable lifecycle
-
-Create a provider-neutral local smoke experiment:
+Portable experiment creation and schedule smoke (does not run a network benchmark):
 
 ```bash
 ./scripts/experiment.sh create \
@@ -237,126 +101,66 @@ Create a provider-neutral local smoke experiment:
   --variant ngi541-direct \
   --repetitions 2 \
   --comparison-mode paired-balanced
-```
 
-The first output line is the generated experiment ID.
-
-Plan it:
-
-```bash
+# Use the experiment ID printed on the first output line:
 ./scripts/experiment.sh plan <experiment-id>
-```
-
-Inspect lifecycle state:
-
-```bash
 ./scripts/experiment.sh status <experiment-id>
 ```
 
-This smoke path validates experiment creation and planning. It is not a publication-grade performance campaign.
+**Result:** a source-control-ignored `experiments/<experiment-id>/` with normalized request, resolved definition and frozen planned run ordering. This is a *lifecycle smoke*, not the accepted four-repetition scientific campaign.
 
-## Build and validate the NGINX integration
+## Build and functional integration
 
-NGI541 is an external installed dependency. Build and install the matching NGI541 revision first from:
-
-```text
-https://github.com/ngi541/ngi541
-```
-
-Then, in this repository:
+The NGINX integration depends on an externally built, matching revision of the [NGI541 engine](https://github.com/ngi541/ngi541) and supported system build tools. Set its installation prefix explicitly:
 
 ```bash
 ./scripts/fetch-deps.sh
-
 export NGI541_PREFIX=/absolute/path/to/ngi541/install
-
 ./scripts/build.sh
 ./scripts/test.sh
 ```
 
-The functional test gate verifies targeted HTTP/3/QUIC behavior and the pinned NGINX regression set. Functional correctness is a prerequisite for performance experimentation; it is not itself a performance claim.
+**Result:** pinned upstream dependencies are fetched; the integration is built against the supplied NGI541 installation; targeted NGINX/QUIC regression tests execute. This gate tests correctness, **not** benchmark speed. Refer to [integration model](docs/integration-model.md) for the precise ownership boundary.
 
-## Reproduce the full controlled local methodology
+## Reproduce the controlled two-host campaign
 
-The frozen local reference campaign requires the corresponding DUT/load-generator topology, SSH access, required system tools, and NGI541/NGINX runtime artifacts.
+This path requires a **configured reference DUT and load-generator environment**, SSH/network access, runtime dependencies and the preserved qualification records. The retained versioned configs are **environment-specific execution definitions**, even though the scientific protocol is provider-independent; do not assume they work unmodified on arbitrary bare metal.
 
-The framework stages are intentionally explicit:
+The stages must be executed in order. Every command yields machine-readable evidence consumed or validated by a later command; an upstream failure stops the campaign.
 
-```bash
-./scripts/experiment.sh network-qualify \
-  --config benchmark/configs/r6.5.1-pi-mac-network.json \
-  --bootstrap
+| Step | Executable command | Action → checked result |
+| --- | --- | --- |
+| `network-qualify` | `./scripts/experiment.sh network-qualify --config benchmark/configs/r6.5.1-pi-mac-network.json` (`--bootstrap` optional) | Checks DUT↔load-generator reachability and link capacity using ping/iperf3 → Network qualification records |
+| `loadgen-runtime` | `./scripts/experiment.sh loadgen-runtime --config benchmark/configs/r6.5.4.2-pi-http3-loadgen.json` (`--bootstrap` optional) | Provisions the pinned HTTP/3 load-generator toolchain and validates versions, executable capabilities, patch/source SHA-256 and runtime identity → Qualified client runtime |
+| `network-evidence` | `./scripts/experiment.sh network-evidence --config benchmark/configs/r6.5.3c-pi-mac-network-evidence.json` | Resolves qualified client and DUT link evidence and constructs a compatible service-capacity envelope. → Derived network envelope and compatibility evidence |
+| `scientific-corpus` | `./scripts/experiment.sh scientific-corpus --config benchmark/configs/r6.5.3d-scientific-corpus.json` | Materializes deterministic scientific-object coverage from the versioned CLAS12, LCLS and HACC-inspired profiles. → Corpus manifest and object hashes |
+| `transport-security` | `./scripts/experiment.sh transport-security --config benchmark/configs/r6.5.4.2-pi-mac-http3-security.json` | Runs HTTP/3/TLS 1.3 interoperability and scientific-object integrity checks for both server variants, including the required cipher suite and peer-verification policy. → Security/functional qualification |
+| `dual-host-telemetry` | `./scripts/experiment.sh dual-host-telemetry --config benchmark/configs/r6.5.4.2-pi-mac-dual-host-telemetry.json` | Qualifies supported host sensors, sampling, readiness and thermal/throttling status across the DUT and remote load generator. → Capability and telemetry contracts |
+| `workload-planner` | `./scripts/experiment.sh workload-planner --config benchmark/configs/r6.5.4.2-pi-mac-stock-workload-planner.json` | Selects a feasible request/concurrency workload using only the baseline NGINX/OpenSSL path and the qualified network envelope. → Frozen workload plan |
+| `final-freeze` | `./scripts/experiment.sh final-freeze --config benchmark/configs/r6.5.4.2-pi-mac-final-freeze.json` | Checks upstream qualification identities and freezes schedule, input/corpus references, runtime artifact SHA-256 and validity policy. → Frozen manifest |
+| `paired-execution` | `./scripts/experiment.sh paired-execution --config benchmark/configs/r6.5.4.5-pi-mac-paired-scientific-execution.json` | Executes baseline and candidate as separate balanced within-condition runs → Append-only raw attempts, paired records and analyzed experiment state. |
 
-./scripts/experiment.sh loadgen-runtime \
-  --config benchmark/configs/r6.5.4.2-pi-http3-loadgen.json \
-  --bootstrap
-
-./scripts/experiment.sh network-evidence \
-  --config benchmark/configs/r6.5.3c-pi-mac-network-evidence.json
-
-./scripts/experiment.sh scientific-corpus \
-  --config benchmark/configs/r6.5.3d-scientific-corpus.json
-
-./scripts/experiment.sh transport-security \
-  --config benchmark/configs/r6.5.4.2-pi-mac-http3-security.json
-
-./scripts/experiment.sh dual-host-telemetry \
-  --config benchmark/configs/r6.5.4.2-pi-mac-dual-host-telemetry.json
-
-./scripts/experiment.sh workload-planner \
-  --config benchmark/configs/r6.5.4.2-pi-mac-stock-workload-planner.json
-
-./scripts/experiment.sh final-freeze \
-  --config benchmark/configs/r6.5.4.2-pi-mac-final-freeze.json
-
-./scripts/experiment.sh paired-execution \
-  --config benchmark/configs/r6.5.4.5-pi-mac-paired-scientific-execution.json
-```
-
-After a paired execution reaches `COMPLETE`, generate the read-only publication artifact:
+For full explanations of each gate, including exact commands, see [execution lifecycle](docs/experiment-lifecycle.md). After `paired-execution` has reached `COMPLETE`, independently validate and export its publication artifact:
 
 ```bash
 ./scripts/experiment.sh results \
-  --experiment <paired-execution-directory>
+  --experiment /absolute/path/to/complete-paired-execution
 ```
 
-The publication command independently validates the frozen campaign, raw/processed identity, paired analysis, lifecycle evidence, and artifact inventory before exporting results.
+The command verifies the experiment identity, raw/processed consistency, paired analysis, validity evidence and output inventory, and writes under `artifacts/results/` (ignored by Git).
 
-## Reproducibility model
-
-The framework separates three identities:
+## Source layout
 
 ```text
-Scientific protocol
-    what is measured and how results are interpreted
-
-Deployment
-    where the experiment runs and how logical roles map to machines
-
-Execution instance
-    the concrete realization with exact binaries, hosts, timestamps,
-    measurements, telemetry, and generated evidence
+benchmark/    current configs, scientific profiles, frozen protocol, framework, HTTP/3 adapter
+integration/  NGINX and nghttp2 patches, versions, regression tests
+scripts/      dependency, build, test and experiment entry points
+environments/ deployment descriptors (provider/access identity is not scientific identity)
+docs/         experiment contracts, methods, reproduction and interpretation
 ```
 
-Changing a provider should not silently change scientific semantics.
-
-See:
-
-- [`docs/benchmark-methodology.md`](docs/benchmark-methodology.md)
-- [`docs/reproducibility.md`](docs/reproducibility.md)
-- [`docs/experimental-scope.md`](docs/experimental-scope.md)
-- [`docs/portability-contract.md`](docs/portability-contract.md)
-- [`docs/analysis.md`](docs/analysis.md)
-
-## Relationship to NGI541
-
-The cryptographic engine is maintained separately:
-
-- NGI541 engine: <https://github.com/ngi541/ngi541>
-- project website: <https://ngi541.org>
-
-This separation is intentional. The benchmark framework may build, integrate, execute, and evaluate an NGI541 revision, but the framework repository is not the production cryptographic library.
+Generated `experiments/`, `qualifications/`, `corpora/`, `artifacts/` and build trees remain outside tracked source history. Consult [repository navigation](benchmark/README.md), [experiment schema](docs/experiment-schema.md) and [portability contract](docs/portability-contract.md).
 
 ## License
 
-NGI541 Benchmark Framework is licensed under the [Apache License 2.0](LICENSE).
+Licensed under the [Apache License, Version 2.0](LICENSE). The NGI541 engine is a separate repository with its own versioned source and license.

@@ -1,165 +1,34 @@
-# Integration model
+# Server-side cryptographic integration boundary
 
-NGI541 is designed to provide cryptographic execution without taking ownership of the surrounding network protocol stack.
+## Baseline and candidate
 
-Different protocols expose different integration boundaries.
+The comparison deliberately changes the **NGINX QUIC server cryptographic execution path**, not the load generator, TLS endpoint semantics or the physical network:
 
-The project therefore distinguishes between direct data-path integration and cryptographic-provider integration.
+| Layer | Baseline (internal `stock`) | Candidate (`ngi541-direct`) |
+| --- | --- | --- |
+| HTTP/3 and QUIC state | NGINX | Same NGINX integration base |
+| TLS 1.3 handshake and key schedule | OpenSSL | OpenSSL |
+| Certificate handling and peer verification | OpenSSL / client validation | Same |
+| AES-based QUIC payload AEAD | Existing OpenSSL-backed QUIC path | Direct NGI541 prepared-key AES-GCM API |
+| AES-based QUIC header mask | Existing path | NGI541 AES-based execution |
+| HTTP/3 client, workload corpus and link | Pinned common setup | Same |
 
-## Direct public API integration
+In the candidate, NGINX obtains QUIC protection keys through its existing TLS machinery, prepares the supported NGI541 key object, then invokes NGI541 for eligible QUIC protection operations. NGI541 does **not** replace OpenSSL as a full TLS provider or PKI library. This is direct data-path integration, distinct from an OpenSSL provider.
 
-In direct integration, the protocol implementation explicitly creates NGI541 prepared-key objects and invokes NGI541 execution functions from its data path.
+## Why system-level measurement is necessary
 
-Conceptually:
+Per-packet AEAD overhead interacts with QUIC packetization, event-loop scheduling, socket queues, CPU contention and link service capacity. A cryptographic primitive's cycles/byte metric is not sufficient evidence for application-level HTTP/3 throughput or CPU/GiB.
 
-```text
-protocol stack
-     │
-     │ keys / packet buffers
-     ▼
-NGI541 public prepared-key API
-     │
-     ▼
-cryptographic execution
-```
+The framework measures normalized server CPU cost per delivered GiB, observed application goodput, diagnostic load-generator CPU headroom and supported same-host energy estimates under matched client and workload conditions.
 
-This model gives the consumer explicit control over where NGI541 enters the data path.
+## Source and validation boundary
 
-It also minimizes intermediate abstraction between the protocol implementation and the cryptographic operation.
+The repository carries the pinned NGINX patch in `integration/patches/nginx-1.31.6/`, the nghttp2 load-generator patch, version pins in `integration/versions/versions.env`, and NGINX regression tests in `integration/tests/nginx-tests/`.
 
-## Current NGINX HTTP/3 integration
+The engine itself is separately maintained at [ngi541/ngi541](https://github.com/ngi541/ngi541). Build/integration validation and transport-security qualification are required before numerical comparisons are accepted.
 
-The NGINX QUIC integration uses this direct model.
+## Not implemented in this reference experiment
 
-The surrounding TLS implementation continues to own:
+Conventional TLS-over-TCP record encryption, reverse-proxy dual-leg TLS crypto, ChaCha20-Poly1305 and generic provider integration are **not** implied by this NGINX QUIC result. Each requires its own integration boundary and explicit experiment definition.
 
-- TLS 1.3 handshake;
-- certificate handling;
-- key derivation.
-
-NGINX provides the resulting QUIC protection keys to its packet-protection layer.
-
-For supported AES-based paths, NGI541 performs selected packet- and header-protection operations through its public prepared-key API.
-
-Conceptually:
-
-```text
-OpenSSL
-  │
-  │ TLS 1.3 handshake / certificates / key derivation
-  ▼
-NGINX QUIC
-  │
-  │ packet-protection keys
-  ▼
-NGI541
-  │
-  │ AES execution
-  ▼
-QUIC packet data path
-```
-
-NGI541 therefore augments the execution path without replacing OpenSSL as the TLS stack.
-
-## TLS 1.3 over TCP
-
-Conventional TLS 1.3 over TCP has a different ownership boundary.
-
-Conceptually:
-
-```text
-NGINX
-  │
-  ▼
-OpenSSL TLS
-  ├── handshake
-  ├── key schedule
-  └── record protection
-```
-
-TLS record encryption is normally performed inside the TLS implementation rather than directly by NGINX.
-
-A direct NGINX-to-NGI541 substitution is therefore not equivalent to the QUIC integration.
-
-A future TLS 1.3 evaluation is expected to require a TLS-stack integration mechanism such as an OpenSSL provider or another explicitly supported crypto backend.
-
-## Provider integration
-
-A provider-style integration preserves the existing application-to-TLS boundary:
-
-```text
-application / NGINX
-        │
-        ▼
-      OpenSSL
-        │
-        ▼
-NGI541 provider/backend
-        │
-        ▼
-cryptographic execution
-```
-
-This is attractive for adoption because existing applications may require fewer protocol-specific modifications.
-
-However, the additional abstraction may have a different execution cost from direct integration.
-
-Provider integration is therefore both an adoption mechanism and an experimental variable.
-
-## Experimental comparison
-
-Where technically possible, the project should distinguish:
-
-```text
-stock OpenSSL
-OpenSSL with NGI541 provider/backend
-direct NGI541 integration
-```
-
-These configurations answer different questions.
-
-The stock path provides the system baseline.
-
-Provider integration measures the cost and benefit of a lower-friction adoption path.
-
-Direct integration measures the execution model with the protocol stack calling NGI541 explicitly at the data-path boundary.
-
-## Reverse proxy
-
-A TLS reverse proxy is an important integration workload because it introduces independent cryptographic state on both sides of the proxy:
-
-```text
-client
-  ⇅
-downstream TLS
-  ⇅
-NGINX proxy
-  ⇅
-upstream TLS
-  ⇅
-origin
-```
-
-The proxy may execute decrypt and encrypt operations for both traffic directions and maintain many simultaneous persistent key contexts.
-
-This makes reverse-proxy evaluation useful for studying:
-
-- concurrency;
-- prepared-key reuse;
-- cache behavior;
-- worker scaling;
-- integration overhead.
-
-## Ownership principle
-
-NGI541 should only take ownership of functionality required by its execution role.
-
-Protocol state, PKI, and handshake logic should remain in established protocol implementations unless a future research objective explicitly requires a different boundary.
-
-This separation keeps NGI541 usable as a cryptographic execution backend rather than requiring applications to adopt a replacement TLS or network stack.
-
-See also:
-
-- [`experimental-scope.md`](experimental-scope.md)
-- [`benchmark-methodology.md`](benchmark-methodology.md)
-- [`topology.md`](topology.md)
+See [HTTP/3 workload](http3-workload.md) and [scope](experimental-scope.md).

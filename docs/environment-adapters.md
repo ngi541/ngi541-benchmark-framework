@@ -1,129 +1,31 @@
-# Environment adapters
+# Deployment adapters and normalized host evidence
 
-Environment adapters translate execution resources into the common R5 experiment ABI.
+## Core responsibility
 
-They do not define benchmark semantics. Workload semantics remain under the benchmark/workload layer.
+A deployment adapter maps the logical roles `dut` and `loadgen` onto reachable nodes and produces normalized environment/provenance records. It may collect CPU model/ISA, frequency policy, NUMA topology, OS, memory, NIC and transport interface facts. It must **not** select the workload, reinterpret scientific metrics, change the A/B order or discard measurements.
 
-## Contract
+The generic CLI accepts a versioned `--deployment` descriptor. A provider selector and an access method are distinct concepts: a provider name is descriptive metadata, while access might be local or SSH. Host names, SSH targets, public IP addresses and local paths never form the provider-independent scientific experiment identity.
 
-Every adapter must produce:
+## Currently implemented generic descriptor
 
-```text
-environment/
-├── adapter.json
-└── nodes/
-    └── <node-name>/
-        ├── system.json
-        ├── cpu.json
-        ├── memory.json
-        └── network.json
+[`../environments/local/single-host.json`](../environments/local/single-host.json) assigns both roles to a local machine for lifecycle/schedule smoke validation. This is not a two-host performance qualification.
+
+```bash
+./scripts/experiment.sh create \
+  --deployment environments/local/single-host.json \
+  --workload http3 \
+  --variant stock --variant ngi541-direct \
+  --repetitions 2 --comparison-mode paired-balanced
 ```
 
-The adapter must normalize platform-specific discovery into these records.
+`create` validates the descriptor and records the scientific request. `plan <experiment-id>` generates paired run order without invoking the DUT or running HTTP traffic.
 
-Experiment consumers should not need to parse `sysctl`, `/proc/cpuinfo`, `lscpu`, CloudLab metadata, or provider-specific formats directly.
+## Separately qualified two-host reference
 
-## Local adapter
+The implemented controlled paired HTTP/3 command set additionally contains **pinned DUT/client execution definitions**. It checks reachability and link envelope, HTTP/3 client toolchain identity, scientific corpus hashes, transport security, sensor readiness, baseline-only planning and final freeze. These are environment-specific operational definitions under `benchmark/configs/`; they are **not** proof that every provider-neutral deployment descriptor is executable by the current specialized runner.
 
-R5.3 implements the first adapter:
+## Contract for any realized deployment
 
-```text
-environment = local
-topology = T0
-```
+For every actual execution, retain machine inventory, source/runtime SHA-256, network service envelope and qualification diagnostics. Missing required controls must invalidate the experiment, not trigger hidden defaults. Hardware changes create new execution provenance, though the frozen scientific protocol can remain the same.
 
-The single local host has two roles:
-
-```text
-load-generator
-dut
-```
-
-The local adapter supports macOS and Linux discovery using Python standard-library orchestration plus operating-system utilities where available.
-
-Missing optional system information is represented as `null` or an empty collection rather than causing the experiment to fail.
-
-## Bare-metal adapter
-
-The future bare-metal adapter will map manually allocated machines into the same normalized node model.
-
-A typical topology is:
-
-```text
-client:
-  load-generator
-
-server:
-  dut
-```
-
-The benchmark framework must not require a different experiment schema for this topology.
-
-## CloudLab adapter
-
-CloudLab is an environment/provisioning adapter, not a benchmark implementation.
-
-After CloudLab resources are allocated and reachable, the adapter must emit the same normalized node records and the same lifecycle boundary as local or manually allocated bare metal.
-
-A typical HTTP/3 topology is:
-
-```text
-client:
-  load-generator
-
-server:
-  dut
-```
-
-A reverse-proxy topology may use:
-
-```text
-client:
-  load-generator
-
-proxy:
-  dut
-
-origin:
-  upstream
-```
-
-## Adapter invariants
-
-An environment adapter must not:
-
-- redefine experiment directory layout;
-- choose A/B scheduling policy;
-- interpret benchmark results;
-- accept evidence claims;
-- discard raw measurements.
-
-Its responsibility ends at resource preparation, normalized inventory, and topology description.
-
-## Portability transition after R6.5.4.5
-
-The historical R5 adapter output and historical experiment directories remain immutable.
-
-New portability work standardizes semantic node roles as:
-
-```text
-dut
-loadgen
-```
-
-Provider and access are separate concepts:
-
-```text
-provider: local | baremetal | cloudlab | ...
-access.mode: local | ssh
-```
-
-The initial machine-readable descriptor is `environments/local/single-host.json`.
-
-Portability P1 introduces this contract without rewiring the historical `environment = local` execution path. Runtime migration is performed separately so that historical campaigns and publication evidence remain reproducible.
-
-## Portable runtime wiring
-
-The generic framework now accepts either the historical `--environment` selector or a portable `--deployment` definition. They are mutually exclusive.
-
-The local provider is implemented through `environments/local/single-host.json`. Provider names and access targets are recorded as deployment provenance and are excluded from scientific experiment identity. Non-local providers remain fail-closed until their adapter is implemented.
+See [topology](topology.md), [portability](portability-contract.md) and [reproducibility](reproducibility.md).

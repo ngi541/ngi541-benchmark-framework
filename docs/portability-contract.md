@@ -1,66 +1,21 @@
-# Portability contract
+# Scientific definition, deployment and execution identity
 
-NGI541 benchmark semantics and deployment identity are separate contracts.
+Portability is a **contract separation**, not a claim that every network provider is supported by the current scientific runner.
 
-## Scientific definition
+| Layer | Defines | Must not define |
+| --- | --- | --- |
+| Scientific protocol | Workload semantics, variants, repetitions, paired schedule, validity gates, primary/secondary metrics, analysis | Host addresses, SSH credentials, specific physical NIC or allocation IDs |
+| Deployment | Logical `dut` / `loadgen` role mapping, provider and access mechanism, runtime path targets | Pair ordering, statistical acceptance rules or workload tuning |
+| Execution instance | Actual host/CPU/NIC details, software hashes, qualification evidence, measurements, attempts, timestamps | Mutations of an already frozen protocol |
 
-The scientific definition contains only experiment semantics:
+`benchmark/framework/experiment_identity.py` computes the semantic identity, and `benchmark/framework/deployment.py` validates the deployment descriptor. The accepted HTTP/3 methodology is [`../benchmark/protocols/http3-paired-r6.5.4.5.json`](../benchmark/protocols/http3-paired-r6.5.4.5.json), with SHA-256 `99805dd378310ec539246e655d3f2a690036e4e50ac83c27c52765d1a50fb387`.
 
-- workload and variants;
-- parameters and conditions;
-- comparison and scheduling policy;
-- measurement controls;
-- validity rules;
-- analysis policy.
+## Runtime contract boundary
 
-Scientific identity must exclude:
+The generic `create --deployment` lifecycle supports the implemented provider adapter and records semantic identity independently from host bindings. The accepted `paired-execution --config` command remains tied to a separate, concrete frozen execution definition with upstream network/host evidence. Provider neutrality of the *protocol* does not imply universal execution portability.
 
-- provider names;
-- machine names;
-- SSH targets;
-- CloudLab identifiers;
-- local absolute paths;
-- hardware inventory.
+## Preservation
 
-`benchmark/framework/experiment_identity.py` computes the provider-independent
-scientific identity.
+The Git repository tracks source code and active definitions. `experiments/`, `qualifications/`, `corpora/`, `artifacts/`, downloaded source and build products remain ignored. Archival research bundles must preserve complete raw data plus their own hashes; Git history/tags retain obsolete implementation history without resurrecting legacy layouts in current `main`.
 
-## Deployment
-
-A deployment binds the canonical roles:
-
-```text
-dut
-loadgen
-```
-
-to concrete nodes and access methods.
-
-Provider is deployment metadata. Hardware, operating-system, network, runtime,
-and toolchain details become execution provenance.
-
-`benchmark/framework/deployment.py` validates this boundary.
-
-## Execution instance
-
-An execution instance is a concrete realization of a scientific definition on
-a deployment.
-
-Generated experiment directories, qualification outputs, deterministic corpus
-materializations, and publication bundles are runtime/research data. They are
-not part of the source repository.
-
-## Canonical protocol
-
-The accepted paired HTTP/3 scientific methodology is:
-
-```text
-benchmark/protocols/http3-paired-r6.5.4.5.json
-```
-
-It is provider-neutral and contains no host binding.
-
-The source repository keeps only code and active definitions required to
-reproduce the methodology. Superseded milestone snapshots, compatibility
-layouts, and historical local experiment trees are intentionally not retained
-on `main`; Git history and release tags provide repository history.
+See [environment adapters](environment-adapters.md), [experiment schema](experiment-schema.md), [reproducibility](reproducibility.md).

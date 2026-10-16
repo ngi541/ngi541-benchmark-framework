@@ -1,87 +1,40 @@
-# Deterministic analysis contract
+# Deterministic measurement analysis and paired inference
 
-R5.5 converts frozen raw experiment measurements into reproducible machine-readable summaries and dependency-free figures.
+## Inputs and selection
 
-## Input boundary
+The analysis reads only sealed `config/resolved.json`, frozen `execution/schedule.json` and retained raw attempts under `raw/runs/<run-id>/attempt-*/measurement.json`. It does **not** re-execute NGINX, reselect load or query live hardware. The first structurally valid attempt in increasing attempt order is selected; later attempts cannot replace it because their performance values are more favorable. Malformed first-valid attempt data fails analysis rather than silently switching samples.
 
-Analysis consumes only experiment-owned data:
+The selected run table preserves schedule identity, exact condition, pair/repetition, variant and measurement-window quantities. `processed/selection.json` exposes selected and ignored attempts. Inputs are append-only after execution.
 
-```text
-config/resolved.json
-execution/schedule.json
-raw/runs/<run-id>/attempt-*/measurement.json
-```
+## Primary / secondary metrics
 
-It never reruns NGINX, curl, or the workload.
+| Metric | Priority | Direction of improvement |
+| --- | --- | --- |
+| `application_goodput_mbps` | Primary | Higher; may be network-ceiling limited |
+| `dut_process_cpu_seconds_per_gib` | Primary | Lower |
+| `dut_estimated_energy_j_per_gib` | Secondary, estimated | Lower; not direct joule-meter measurement |
+| `loadgen_max_total_cpu_busy_percent` | Secondary diagnostic | Lower is more headroom |
+| `loadgen_max_single_core_busy_percent` | Secondary diagnostic | Lower is more headroom |
 
-## Attempt selection
+## Pairing and interpretation
 
-Retries are allowed only by the execution layer after operational invalidity. Analysis prevents retry selection bias with one fixed rule:
-
-```text
-select the lowest-numbered attempt whose execution.valid is true
-```
-
-Metric values are not inspected when choosing the attempt. Later attempts are recorded as ignored. If the first valid attempt is malformed, analysis fails; it does not select a later attempt.
-
-## Normalization
-
-`processed/runs.csv` contains one selected row per scheduled run and preserves schedule sequence, pair identity, variant, repetition, workload parameters, request counts, elapsed time, and the primary metric.
-
-`processed/selection.json` records the selected attempt number and the number of earlier invalid and later ignored attempts for every run.
-
-## Statistics
-
-For each condition and variant:
+The accepted protocol pairs baseline OpenSSL/NGINX and NGI541-integrated NGINX **within the same frozen condition and repetition**. Each paired relative percentage is:
 
 ```text
-n
-mean
-median
-min
-max
-sample standard deviation (n - 1)
-coefficient of variation (%)
+ratio = candidate_measurement / baseline_measurement
+delta_percent = (ratio - 1) × 100
 ```
 
-Dispersion fields are null for a single observation.
+For goodput, positive deltas favor the candidate. For CPU seconds/GiB, **negative deltas favor the candidate**. Summary uses the **median paired delta**, preserving condition-level variation, wins/losses/ties and dispersion. Four repetitions per condition are frozen. Do not substitute independent group means for pairwise analysis.
 
-For `paired-balanced` experiments with two variants, the resolved variant order defines:
+For general framework analysis, deterministic CSV/JSON include per-variant n/mean/median/min/max, sample standard deviation and coefficient of variation where valid; generated SVG figures are derived presentation artifacts. The normalized numeric outputs are authoritative.
 
-```text
-variants[0] = baseline
-variants[1] = candidate
-```
+## Integrity
 
-Per-pair ratio and delta are:
+Analysis provenance records the framework revision. Output hash manifests permit byte-level revalidation. Reprocessing identical sealed inputs with the same implementation should reproduce the same processed values and deterministic plots. Publication `results --experiment` independently checks the completed chain and exports under `artifacts/results/`.
 
-```text
-ratio = candidate / baseline
-delta_percent = (ratio - 1) * 100
-```
+## Evidence scope
 
-Condition-level paired statistics include mean and median delta, min/max delta, sample standard deviation of deltas, wins/losses/ties, and geometric-mean ratio when all ratios are positive.
+The local accepted campaign previously reported about 8.216% lower DUT CPU seconds/GiB, a favorable result in 44/48 valid pairs, near-zero goodput delta and ~0.248% lower *estimated* energy/GiB. These are **local, bandwidth-limited** observations pending publicly archived artifact linking—not general hardware or HPC claims. Publish the raw/processed artifact and verified DOI before promoting them as externally independently reproduced findings.
 
-## Figures
-
-The analysis layer generates deterministic SVG figures without Matplotlib, NumPy, or another plotting dependency. Presentation is derived only from processed experiment data.
-
-`figures/requests-per-second.svg` is a grouped-bar comparison of median throughput by workload condition. Human-readable labels use payload size and worker/client topology (for example `16 KiB`, `2w/16c`); the internal condition ID is retained only as secondary metadata.
-
-`figures/paired-delta.svg` summarizes the median paired candidate-vs-baseline delta per condition around an explicit zero baseline. When a condition has multiple paired repetitions, the figure also shows the observed min/max range and individual paired samples. Positive delta means the candidate is faster than the baseline.
-
-Both figures use deterministic axis scaling, value annotations, stable variant presentation, and no timestamp or random layout state. They are presentation artifacts only; `statistics.json`, `summary.csv`, and `pairs.csv` remain the normative numeric outputs.
-
-## Determinism and integrity
-
-Generated CSV, JSON, Markdown, and SVG files contain no current-time field. Re-running the analysis against identical raw inputs and the same analysis implementation produces byte-identical result artifacts.
-
-`processed/analysis-provenance.json` records the Git identity of the analysis implementation. `processed/artifacts.sha256` fingerprints every generated result artifact except itself. COMPLETE-state validation recomputes these hashes.
-
-## Lifecycle
-
-```text
-ANALYZING --analyze--> COMPLETE
-```
-
-An analysis failure transitions to `FAILED` with stage `analyzing`. Re-running `analyze` resumes only analysis-stage failures; it cannot mask preparation or execution failures.
+See [methodology](benchmark-methodology.md) and [reproducibility](reproducibility.md).

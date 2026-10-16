@@ -1,198 +1,35 @@
-# Experiment framework
+# Experiment orchestration, validation and analysis
 
-`benchmark/framework/` implements the reproducible experiment lifecycle used by NGI541 Benchmark Framework.
+The framework owns lifecycle transitions, provider-neutral request identity, data validation, deterministic run schedules, sealed provenance, append-only attempts, qualification gates and publication output validation. It uses Python's standard library for core operation.
 
-It is intentionally implemented with the Python standard library so that experiment orchestration and deterministic analysis do not depend on a large scientific-Python software environment.
+## Two execution interfaces
 
-## Lifecycle
+**Generic experiment lifecycle:** `create → plan → prepare → seal → validate → execute → analyze → COMPLETE`. The `campaign` command can drive this state machine for a valid campaign definition while enforcing identical-definition resume and framework identity. `--deployment` binds `dut` and `loadgen` roles through a validated descriptor; non-local providers are fail-closed unless supported.
 
-The generic lifecycle is:
+**Controlled HTTP/3 scientific pipeline:** qualification and freeze commands (`network-qualify`, `loadgen-runtime`, `network-evidence`, `scientific-corpus`, `transport-security`, `dual-host-telemetry`, `workload-planner`, `final-freeze`) precede `paired-execution`, then `results`. Current `paired-execution --config` uses the pinned reference execution config; this is not interchangeable with the generic `create --deployment` interface.
 
-```text
-create
-  |
-  v
-plan
-  |
-  v
-prepare
-  |
-  v
-seal
-  |
-  v
-validate
-  |
-  v
-execute
-  |
-  v
-validate
-  |
-  v
-analyze
-  |
-  v
-COMPLETE
-```
+## Primary invariants
 
-Specialized qualification commands build the evidence required by controlled scientific campaigns before paired execution is allowed.
+- `stock` = NGINX/OpenSSL baseline *server* path; `ngi541-direct` = NGI541-integrated server QUIC packet/header-protection path; same pinned HTTP/3 client.
+- The workload planner observes **baseline only**; the accepted protocol freezes 4 repetitions per condition, balanced variant order and rotating condition order.
+- A measured run fails on HTTP errors, detected throttling or violation of generator headroom (85% overall, 95% busiest core).
+- No performance-metric-driven automatic retry or outlier selection; raw attempts remain append-only.
+- Analysis selects the earliest structurally valid attempt and recomputes paired deltas; `results` independently checks publication identity and integrity.
 
-## CLI
+## Commands and evidence
 
-All commands are exposed through:
+See the complete [stage-by-stage table and exact commands](../../docs/experiment-lifecycle.md). A minimal framework-only test requires no DUT:
 
 ```bash
-./scripts/experiment.sh
+python3 -m unittest discover -s benchmark/framework/tests -p 'test_*.py'
 ```
 
-Core lifecycle commands include:
-
-```text
-create
-plan
-prepare
-seal
-execute
-analyze
-status
-validate
-campaign
-```
-
-Current scientific qualification/execution commands include:
-
-```text
-network-qualify
-loadgen-runtime
-network-evidence
-scientific-corpus
-transport-security
-dual-host-telemetry
-workload-planner
-final-freeze
-paired-execution
-results
-```
-
-Use the command help for the current argument contract:
+Inspect CLI argument contracts using:
 
 ```bash
 ./scripts/experiment.sh --help
-./scripts/experiment.sh <command> --help
+./scripts/experiment.sh paired-execution --help
+./scripts/experiment.sh results --help
 ```
 
-## Portable experiment creation
-
-A portable experiment binds logical roles through a deployment descriptor:
-
-```bash
-./scripts/experiment.sh create \
-  --deployment environments/local/single-host.json \
-  --workload http3 \
-  --variant stock \
-  --variant ngi541-direct \
-  --repetitions 2 \
-  --comparison-mode paired-balanced
-```
-
-Provider identity is deployment metadata. It is excluded from scientific experiment identity.
-
-## Controlled paired execution
-
-The accepted local reference execution is defined by:
-
-```text
-benchmark/configs/r6.5.4.5-pi-mac-paired-scientific-execution.json
-```
-
-Its scientific methodology projects to:
-
-```text
-benchmark/protocols/http3-paired-r6.5.4.5.json
-```
-
-The paired execution contract includes:
-
-- `stock` as baseline;
-- `ngi541-direct` as candidate;
-- balanced within-condition pairing;
-- rotating condition order;
-- four paired repetitions per condition;
-- predeclared validity gates;
-- no metric-dependent automatic retry;
-- retain-all-valid-runs outlier policy.
-
-## Qualification chain
-
-Before final paired execution, the current reference pipeline validates:
-
-```text
-network path
-    ->
-load-generator runtime
-    ->
-network evidence
-    ->
-scientific corpus
-    ->
-HTTP/3/TLS security contract
-    ->
-dual-host telemetry
-    ->
-stock-only workload plan
-    ->
-final frozen manifest
-    ->
-paired execution
-```
-
-A failure in a prerequisite gate prevents a later phase from silently proceeding with incomplete evidence.
-
-## Analysis contract
-
-Analysis consumes the frozen schedule and append-only raw measurements. It does not rerun the workload.
-
-Attempt selection is metric-independent: the first structurally valid execution attempt for a scheduled run is selected. Later attempts are not substituted because they produce a more favorable metric.
-
-Current paired primary metrics are:
-
-```text
-application_goodput_mbps
-dut_process_cpu_seconds_per_gib
-```
-
-Current secondary metrics include:
-
-```text
-dut_estimated_energy_j_per_gib
-loadgen_max_total_cpu_busy_percent
-loadgen_max_single_core_busy_percent
-```
-
-The controlled paired summary statistic is the median paired delta within the predeclared condition structure.
-
-## Publication
-
-A completed paired execution can be transformed into a read-only publication artifact:
-
-```bash
-./scripts/experiment.sh results \
-  --experiment <paired-execution-directory>
-```
-
-Publication generation independently checks execution identity, frozen inputs, raw/processed consistency, paired-analysis recomputation, validity evidence, and artifact hashes.
-
-Generated publication data belongs under `artifacts/results/` and is not tracked by Git.
-
-## Tests
-
-Run the framework suite with:
-
-```bash
-python3 -m unittest discover \
-  -s benchmark/framework/tests \
-  -p 'test_*.py'
-```
-
-The tests cover lifecycle invariants, schemas, deployment identity, HTTP/3 execution, network qualification, scientific corpus behavior, transport security, telemetry, workload planning, frozen protocol semantics, paired execution, deterministic analysis, and result integrity.
+See [schemas](schemas/README.md), [analysis](../../docs/analysis.md), [reproducibility](../../docs/reproducibility.md), and [the frozen protocol](../protocols/README.md).

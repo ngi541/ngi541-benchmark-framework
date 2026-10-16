@@ -1,99 +1,21 @@
-# Benchmark layer
+# Benchmark definitions and implementation
 
-`benchmark/` contains the provider-independent experimental machinery used by NGI541 Benchmark Framework.
+The benchmark layer holds the **active executable definitions** and the standard-library Python orchestration/analysis implementation. It does not claim that every available machine is a qualified DUT.
 
-The benchmark layer defines **what is measured and how it is measured**. It does not own infrastructure allocation.
+| Directory | Contract |
+| --- | --- |
+| `configs/` | Versioned execution/qualification definitions; currently includes Pi/Mac-specific reference bindings |
+| `framework/` | CLI, execution lifecycle, preflight, telemetry, validity, analysis, results validation |
+| `framework/schemas/` | JSON Schema files describing experiment/evidence records |
+| `protocols/` | Immutable provider-independent methodology (current: `http3-paired-r6.5.4.5.json`) |
+| `scientific-profiles/` | CLAS12/LCLS/HACC-inspired deterministic shape definitions |
+| `workloads/http3/` | NGINX/HTTP/3 workload adapter and per-run measurements |
 
-## Structure
-
-```text
-benchmark/
-├── configs/
-│   └── active executable definitions for the current implementation
-├── framework/
-│   ├── lifecycle orchestration
-│   ├── qualification and validation
-│   ├── telemetry
-│   ├── workload planning
-│   ├── paired execution
-│   ├── deterministic analysis
-│   ├── result publication
-│   ├── schemas/
-│   └── tests/
-├── protocols/
-│   └── provider-independent frozen scientific methodology
-├── scientific-profiles/
-│   └── deterministic scientific workload profiles
-└── workloads/
-    └── http3/
-        └── application workload adapter
-```
-
-## Boundary
-
-The scientific layer must not depend on:
-
-- CloudLab allocation IDs;
-- SSH host names;
-- provider-specific machine names;
-- local filesystem roots;
-- hardware inventory that belongs to a concrete execution;
-- manually chosen post-result tuning.
-
-Provider and machine realization belongs to `environments/` and execution provenance.
-
-## Methodology principles
-
-A performance campaign should make explicit:
-
-- workload object semantics;
-- protocol and cipher suite;
-- variants under comparison;
-- condition ordering;
-- repetition count;
-- warm-up policy;
-- measurement window;
-- validity gates;
-- primary and secondary metrics;
-- pairing rules;
-- retry policy;
-- outlier policy.
-
-The current controlled paired methodology plans load against `stock` only, freezes inputs before candidate execution, balances variant order, retains every valid observation, and prohibits metric-dependent retry and metric-dependent outlier deletion.
-
-## Generated data
-
-The following are generated research data and are intentionally not source-controlled:
-
-```text
-experiments/
-qualifications/
-corpora/
-artifacts/
-```
-
-They contain execution-specific evidence and may be large.
-
-## Entry points
-
-Framework CLI:
+The primary comparison is **baseline OpenSSL/NGINX server path** versus **NGI541-integrated QUIC server crypto path**, internally identified as `stock` and `ngi541-direct`. The client and scientific object stream are held constant. Four frozen paired repetitions per condition are specified by the accepted protocol; CLI smoke examples may use two repetitions to validate only scheduling.
 
 ```bash
-./scripts/experiment.sh <command> ...
+python3 -m unittest discover -s benchmark/framework/tests -p 'test_*.py'
+./scripts/experiment.sh --help
 ```
 
-Framework tests:
-
-```bash
-python3 -m unittest discover \
-  -s benchmark/framework/tests \
-  -p 'test_*.py'
-```
-
-See:
-
-- [`framework/README.md`](framework/README.md)
-- [`protocols/README.md`](protocols/README.md)
-- [`workloads/http3/README.md`](workloads/http3/README.md)
-- [`../docs/benchmark-methodology.md`](../docs/benchmark-methodology.md)
-- [`../docs/reproducibility.md`](../docs/reproducibility.md)
+Source-owned definitions are not runtime data. Execution instances live in ignored `experiments/`; qualification results and materialized corpus/publication bundles live in ignored `qualifications/`, `corpora/` and `artifacts/`. See [framework contract](framework/README.md), [protocols](protocols/README.md) and [methodology](../docs/benchmark-methodology.md).
