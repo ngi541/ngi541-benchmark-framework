@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NGI541 additive A/B/C draft design (not an execution protocol)",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "question",
+    "arms",
+    "execution",
+    "conditions",
+    "measurements"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "const": "design-draft-non-executable"
+    },
+    "question": {
+      "type": "string"
+    },
+    "arms": {
+      "type": "object",
+      "required": [
+        "A",
+        "B",
+        "C"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "A": {
+          "type": "object",
+          "required": [
+            "protocol",
+            "server_crypto",
+            "client_uses_ngi541",
+            "direction"
+          ],
+          "properties": {
+            "protocol": {
+              "const": "h2"
+            },
+            "server_crypto": {
+              "const": "openssl"
+            },
+            "client_uses_ngi541": {
+              "const": false
+            },
+            "direction": {
+              "const": "server-to-client"
+            }
+          },
+          "additionalProperties": false
+        },
+        "B": {
+          "type": "object",
+          "required": [
+            "protocol",
+            "server_crypto",
+            "client_uses_ngi541",
+            "direction"
+          ],
+          "properties": {
+            "protocol": {
+              "const": "h3"
+            },
+            "server_crypto": {
+              "const": "openssl"
+            },
+            "client_uses_ngi541": {
+              "const": false
+            },
+            "direction": {
+              "const": "server-to-client"
+            }
+          },
+          "additionalProperties": false
+        },
+        "C": {
+          "type": "object",
+          "required": [
+            "protocol",
+            "server_crypto",
+            "client_uses_ngi541",
+            "direction"
+          ],
+          "properties": {
+            "protocol": {
+              "const": "h3"
+            },
+            "server_crypto": {
+              "const": "ngi541"
+            },
+            "client_uses_ngi541": {
+              "const": false
+            },
+            "direction": {
+              "const": "server-to-client"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "execution": {
+      "type": "object"
+    },
+    "conditions": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9
+    },
+    "measurements": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "status": "design-draft-non-executable",
+  "question": "How much of the high-speed QUIC/HTTP/3 efficiency gap is attributable to cryptographic execution, and under which workload and hardware conditions can an optimized crypto engine meaningfully reduce that gap?",
+  "arms": {
+    "A": {
+      "protocol": "h2",
+      "server_crypto": "openssl",
+      "client_uses_ngi541": false,
+      "direction": "server-to-client"
+    },
+    "B": {
+      "protocol": "h3",
+      "server_crypto": "openssl",
+      "client_uses_ngi541": false,
+      "direction": "server-to-client"
+    },
+    "C": {
+      "protocol": "h3",
+      "server_crypto": "ngi541",
+      "client_uses_ngi541": false,
+      "direction": "server-to-client"
+    }
+  },
+  "execution": {
+    "repetitions": 4,
+    "comparison": "bc-causal-pair-plus-a-reference",
+    "ordering": "precommitted-balanced-4-rounds",
+    "retry_policy": "no-metric-dependent-retry",
+    "outlier_policy": "retain-all-valid-runs",
+    "client_connections": 4
+  },
+  "conditions": [
+    {
+      "condition_id": "clas12-event-stream-4",
+      "profile_id": "clas12-event-stream",
+      "concurrent_streams": 4,
+      "streams_per_connection": 1
+    },
+    {
+      "condition_id": "clas12-event-stream-16",
+      "profile_id": "clas12-event-stream",
+      "concurrent_streams": 16,
+      "streams_per_connection": 4
+    },
+    {
+      "condition_id": "clas12-event-stream-64",
+      "profile_id": "clas12-event-stream",
+      "concurrent_streams": 64,
+      "streams_per_connection": 16
+    },
+    {
+      "condition_id": "lcls-detector-frame-4",
+      "profile_id": "lcls-detector-frame",
+      "concurrent_streams": 4,
+      "streams_per_connection": 1
+    },
+    {
+      "condition_id": "lcls-detector-frame-16",
+      "profile_id": "lcls-detector-frame",
+      "concurrent_streams": 16,
+      "streams_per_connection": 4
+    },
+    {
+      "condition_id": "lcls-detector-frame-64",
+      "profile_id": "lcls-detector-frame",
+      "concurrent_streams": 64,
+      "streams_per_connection": 16
+    },
+    {
+      "condition_id": "hacc-multifile-dataset-4",
+      "profile_id": "hacc-multifile-dataset",
+      "concurrent_streams": 4,
+      "streams_per_connection": 1
+    },
+    {
+      "condition_id": "hacc-multifile-dataset-16",
+      "profile_id": "hacc-multifile-dataset",
+      "concurrent_streams": 16,
+      "streams_per_connection": 4
+    },
+    {
+      "condition_id": "hacc-multifile-dataset-64",
+      "profile_id": "hacc-multifile-dataset",
+      "concurrent_streams": 64,
+      "streams_per_connection": 16
+    }
+  ],
+  "measurements": {
+    "modes": [
+      "performance",
+      "attribution"
+    ],
+    "required_performance": [
+      "application_goodput_mbps",
+      "dut_process_cpu_seconds_per_gib",
+      "dut_host_cpu_seconds_per_gib",
+      "loadgen_max_single_core_busy_percent"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NGI541 M2.1.2a Read-only Environment Evidence",
+  "$id": "https://ngi541.org/schemas/abc-m2-environment-v1.schema.json",
+  "type": "object",
+  "required": ["schema_version", "revision", "kind", "run_id", "attempt_id", "host_role", "arm", "context", "categories", "command_evidence", "evidence_policy", "qualified_primary_result"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "revision": {"const": "ngi541-abc-m2.1.2a-environment-r1"},
+    "kind": {"const": "linux-environment-evidence"},
+    "run_id": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,128}$"},
+    "attempt_id": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,128}$"},
+    "host_role": {"enum": ["dut", "client"]},
+    "arm": {"enum": ["A", "B", "C"]},
+    "context": {"type": "object", "required": ["boot_id", "environment_class", "authoritative_bare_metal_attestation"]},
+    "categories": {"type": "object", "required": ["cpu", "cpu_topology", "cpu_execution", "memory", "nic", "packet_io", "os", "nginx", "crypto", "client", "workload"], "properties": {
+      "cpu": {"$ref": "#/$defs/group"}, "cpu_topology": {"$ref": "#/$defs/group"}, "cpu_execution": {"$ref": "#/$defs/group"}, "memory": {"$ref": "#/$defs/group"}, "nic": {"$ref": "#/$defs/group"}, "packet_io": {"$ref": "#/$defs/group"}, "os": {"$ref": "#/$defs/group"}, "nginx": {"$ref": "#/$defs/group"}, "crypto": {"$ref": "#/$defs/group"}, "client": {"$ref": "#/$defs/group"}, "workload": {"$ref": "#/$defs/group"}
+    }, "additionalProperties": false},
+    "command_evidence": {"type": "object"},
+    "evidence_policy": {"type": "string"},
+    "qualified_primary_result": {"const": false}
+  },
+  "$defs": {
+    "group": {"type": "object", "additionalProperties": {"$ref": "#/$defs/field"}},
+    "field": {"type": "object", "required": ["state", "value", "source", "scope", "reason"], "additionalProperties": false,
+      "properties": {
+        "state": {"enum": ["measured", "unavailable", "not_applicable", "invalid"]},
+        "value": {},
+        "source": {"type": "string", "minLength": 1},
+        "scope": {"type": "string", "minLength": 1},
+        "reason": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {"if": {"properties": {"state": {"const": "measured"}}}, "then": {"properties": {"reason": {"type": "null"}, "value": {"not": {"type": "null"}}}}},
+        {"if": {"properties": {"state": {"enum": ["unavailable", "not_applicable", "invalid"]}}}, "then": {"properties": {"reason": {"type": "string", "minLength": 1}, "value": {"type": "null"}}}}
+      ]
+    }
+  }
+}

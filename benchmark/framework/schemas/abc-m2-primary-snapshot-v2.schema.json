@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ngi541:abc:m2:primary-snapshot:2",
+  "title": "NGI541 additive M2 Linux primary snapshot v2",
+  "type": "object",
+  "required": ["schema_version","contract_revision","kind","run_id","attempt_id","window_id","phase","host_role","capture","identity","counters"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "contract_revision": {"const": "ngi541-abc-m2-0.2-additive-r1"},
+    "kind": {"const": "linux-primary-snapshot"},
+    "run_id": {"type": "string", "minLength": 1},
+    "attempt_id": {"type": "string", "minLength": 1},
+    "window_id": {"type": "string", "minLength": 1},
+    "phase": {"enum": ["start","end"]},
+    "host_role": {"enum": ["dut","client"]},
+    "capture": {"type": "object", "required": ["utc_started","monotonic_ns_before","monotonic_ns_after","read_duration_ns"]},
+    "identity": {"type": "object", "required": ["boot_id","hostname","kernel","cpu_tick_hz","cpus","interface","network_scope"]},
+    "counters": {"type": "object", "required": ["cpu_ticks","netdev","cgroup","protocols","protocol_read_errors"]}
+  },
+  "additionalProperties": false
+}

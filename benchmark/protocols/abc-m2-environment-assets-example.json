@@ -1,0 +1,23 @@
+{
+  "nginx_binary": null,
+  "nginx_patch": null,
+  "nginx_config": null,
+  "nginx_source_revision": null,
+  "nginx_configure_flags": null,
+  "nginx_worker_affinity": null,
+  "openssl_source_archive": null,
+  "openssl_library": null,
+  "openssl_revision": null,
+  "ngi541_library": null,
+  "ngi541_revision": null,
+  "dispatch_isa_path": null,
+  "client_binary": null,
+  "tls_provider": null,
+  "h2_h3_capability": null,
+  "corpus_manifest": null,
+  "object_identifiers": null,
+  "stream_schedule": null,
+  "profile_id": null,
+  "cache_policy": null,
+  "quic_gso": null
+}

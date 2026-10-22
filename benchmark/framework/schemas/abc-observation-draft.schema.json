@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NGI541 A/B/C observation envelope (draft)",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "arm",
+    "mode",
+    "condition_id",
+    "repetition",
+    "protocol_proof",
+    "client",
+    "metrics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "arm": {
+      "enum": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "mode": {
+      "enum": [
+        "performance",
+        "attribution"
+      ]
+    },
+    "condition_id": {
+      "type": "string"
+    },
+    "repetition": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "protocol_proof": {
+      "type": "object"
+    },
+    "client": {
+      "type": "object"
+    },
+    "metrics": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

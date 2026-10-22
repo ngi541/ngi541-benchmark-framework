@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ngi541:abc:m2:observation:2",
+  "title": "NGI541 additive M2 evidence-only observation v2",
+  "type": "object",
+  "required": ["schema_version","contract_revision","arm","collection_mode","run_id","attempt_id","window_id","host_role","qualification_status","metrics","raw_counter_evidence"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "contract_revision": {"const": "ngi541-abc-m2-0.2-additive-r1"},
+    "arm": {"enum": ["A","B","C"]},
+    "collection_mode": {"const": "P"},
+    "run_id": {"type": "string", "minLength": 1},
+    "attempt_id": {"type": "string", "minLength": 1},
+    "window_id": {"type": "string", "minLength": 1},
+    "host_role": {"enum": ["dut","client"]},
+    "qualification_status": {"const": "evidence-only-not-qualified"},
+    "metrics": {"type": "object", "additionalProperties": {"type": "object", "required": ["state","value","reason","unit","scope","source","host_role","window_id","collection_mode","sampling_interval_seconds","detail"], "properties": {"state": {"enum": ["measured","unavailable","not_applicable","invalid"]}, "value": {"type": ["number","null"]}, "reason": {"type": ["string","null"]}, "unit": {"type": "string"}, "scope": {"type": "string"}, "source": {"type": "string"}, "host_role": {"enum": ["dut","client"]}, "window_id": {"type": "string"}, "collection_mode": {"const": "P"}, "sampling_interval_seconds": {"type": ["number","null"]}, "detail": {"type": "object"}}}},
+    "raw_counter_evidence": {"type": "object"},
+    "input_sha256": {"type": "object", "required": ["start","end"]}
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,420 @@
+{
+  "registry_version": "ngi541-abc-m2-draft-v0.2",
+  "status": "design-not-frozen",
+  "scope": "server-to-client-GET",
+  "legacy_protocol_sha256": "99805dd378310ec539246e655d3f2a690036e4e50ac83c27c52765d1a50fb387",
+  "measurement_modes": {
+    "P": "primary-performance",
+    "C": "crypto-attribution",
+    "K": "kernel-microarchitecture-attribution"
+  },
+  "states": [
+    "measured",
+    "unavailable",
+    "not_applicable",
+    "invalid"
+  ],
+  "metrics": [
+    {
+      "name": "valid_application_payload_bytes",
+      "group": "application",
+      "modes": [
+        "P"
+      ],
+      "unit": "bytes",
+      "scope": "client-main-window",
+      "preferred_source": "loadgen verified completion accounting",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Exclude retransmissions, transport headers and failed objects"
+    },
+    {
+      "name": "main_window_seconds",
+      "group": "execution",
+      "modes": [
+        "P"
+      ],
+      "unit": "seconds",
+      "scope": "coordinated-main-window",
+      "preferred_source": "monotonic orchestration events",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Monotonic interval aligned with byte/CPU deltas"
+    },
+    {
+      "name": "application_goodput_mbps",
+      "group": "application",
+      "modes": [
+        "P"
+      ],
+      "unit": "Mbit/s",
+      "scope": "A-B-C-main-window",
+      "preferred_source": "8*valid_application_payload_bytes/main_window_seconds/1e6",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Decimal Mbit/s"
+    },
+    {
+      "name": "dut_process_cpu_seconds_per_gib",
+      "group": "cpu",
+      "modes": [
+        "P"
+      ],
+      "unit": "CPU-seconds/GiB",
+      "scope": "nginx-process-family",
+      "preferred_source": "/proc or dedicated cgroup cpu.stat",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "All worker CPU user+system normalized by valid GiB"
+    },
+    {
+      "name": "dut_host_cpu_seconds_per_gib",
+      "group": "cpu",
+      "modes": [
+        "P"
+      ],
+      "unit": "CPU-seconds/GiB",
+      "scope": "dut-allocated-cpuset",
+      "preferred_source": "/proc/stat per cpu",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Allocated CPU-set active seconds; background activity must be controlled"
+    },
+    {
+      "name": "client_max_single_core_busy_percent",
+      "group": "cpu",
+      "modes": [
+        "P"
+      ],
+      "unit": "percent",
+      "scope": "loadgen-cpuset",
+      "preferred_source": "/proc/stat per-cpu delta",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Client-side headroom gate"
+    },
+    {
+      "name": "client_total_busy_percent",
+      "group": "cpu",
+      "modes": [
+        "P"
+      ],
+      "unit": "percent",
+      "scope": "loadgen-cpuset",
+      "preferred_source": "/proc/stat cpuset",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Effective allocated capacity, not all host cores"
+    },
+    {
+      "name": "nic_tx_bytes",
+      "group": "network",
+      "modes": [
+        "P"
+      ],
+      "unit": "bytes",
+      "scope": "dedicated-experiment-interface",
+      "preferred_source": "/sys/class/net/<iface>/statistics/tx_bytes",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Counter delta, not application bytes"
+    },
+    {
+      "name": "nic_rx_bytes",
+      "group": "network",
+      "modes": [
+        "P"
+      ],
+      "unit": "bytes",
+      "scope": "dedicated-experiment-interface",
+      "preferred_source": "/sys/class/net/<iface>/statistics/rx_bytes",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Counter delta"
+    },
+    {
+      "name": "nic_tx_drops",
+      "group": "network",
+      "modes": [
+        "P"
+      ],
+      "unit": "packets",
+      "scope": "dedicated-experiment-interface",
+      "preferred_source": "/sys/class/net/<iface>/statistics/tx_dropped",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Zero is meaningful when truly measured"
+    },
+    {
+      "name": "nic_rx_drops",
+      "group": "network",
+      "modes": [
+        "P"
+      ],
+      "unit": "packets",
+      "scope": "dedicated-experiment-interface",
+      "preferred_source": "/sys/class/net/<iface>/statistics/rx_dropped",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Zero is meaningful when truly measured"
+    },
+    {
+      "name": "quic_aead_seal_calls",
+      "group": "crypto",
+      "modes": [
+        "C"
+      ],
+      "unit": "operations",
+      "scope": "dut-1rtt-and-other-epochs",
+      "preferred_source": "NGINX ngx_quic_crypto_seal wrapper",
+      "required_for": [
+        "B",
+        "C"
+      ],
+      "description": "Count actual success and failure by epoch/backend"
+    },
+    {
+      "name": "quic_aead_open_calls",
+      "group": "crypto",
+      "modes": [
+        "C"
+      ],
+      "unit": "operations",
+      "scope": "dut-1rtt-and-other-epochs",
+      "preferred_source": "NGINX ngx_quic_crypto_open wrapper",
+      "required_for": [
+        "B",
+        "C"
+      ],
+      "description": "Count actual success and authentication failure by epoch/backend"
+    },
+    {
+      "name": "quic_header_protection_calls",
+      "group": "crypto",
+      "modes": [
+        "C"
+      ],
+      "unit": "operations",
+      "scope": "dut-1rtt-and-other-epochs",
+      "preferred_source": "NGINX ngx_quic_crypto_hp wrapper",
+      "required_for": [
+        "B",
+        "C"
+      ],
+      "description": "Separately count direction and backend"
+    },
+    {
+      "name": "quic_aead_plaintext_bytes",
+      "group": "crypto",
+      "modes": [
+        "C"
+      ],
+      "unit": "bytes",
+      "scope": "dut-quic-aead-payload",
+      "preferred_source": "NGINX common wrapper counter",
+      "required_for": [
+        "B",
+        "C"
+      ],
+      "description": "Exclude AEAD authentication tag"
+    },
+    {
+      "name": "ngi541_prepared_encrypt_calls",
+      "group": "crypto",
+      "modes": [
+        "C"
+      ],
+      "unit": "operations",
+      "scope": "dut-nginx-ngi541",
+      "preferred_source": "NGI541 call-site counter",
+      "required_for": [
+        "C"
+      ],
+      "description": "Must be >0 for candidate 1-RTT data test"
+    },
+    {
+      "name": "ngi541_prepared_decrypt_calls",
+      "group": "crypto",
+      "modes": [
+        "C"
+      ],
+      "unit": "operations",
+      "scope": "dut-nginx-ngi541",
+      "preferred_source": "NGI541 call-site counter",
+      "required_for": [
+        "C"
+      ],
+      "description": "Can be small in GET; keep 1-RTT/handshake separate"
+    },
+    {
+      "name": "ngi541_hp_calls",
+      "group": "crypto",
+      "modes": [
+        "C"
+      ],
+      "unit": "operations",
+      "scope": "dut-nginx-ngi541",
+      "preferred_source": "NGI541 AES-CTR HP call-site counter",
+      "required_for": [
+        "C"
+      ],
+      "description": "Must be >0 in 1-RTT data test"
+    },
+    {
+      "name": "openssl_quic_fallback_calls",
+      "group": "crypto",
+      "modes": [
+        "C"
+      ],
+      "unit": "operations",
+      "scope": "dut-nginx-ngi541",
+      "preferred_source": "OpenSSL branch counter in patched common path",
+      "required_for": [
+        "C"
+      ],
+      "description": "Must be recorded even when zero"
+    },
+    {
+      "name": "key_preparations",
+      "group": "crypto",
+      "modes": [
+        "C"
+      ],
+      "unit": "operations",
+      "scope": "dut-nginx",
+      "preferred_source": "key init/create wrapper",
+      "required_for": [
+        "B",
+        "C"
+      ],
+      "description": "Separate handshake/1-RTT and per connection"
+    },
+    {
+      "name": "cpu_cycles",
+      "group": "pmu",
+      "modes": [
+        "K"
+      ],
+      "unit": "cycles",
+      "scope": "selected-cgroup-or-cpuset",
+      "preferred_source": "perf stat/record",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Record enabled/running ratio and privileges"
+    },
+    {
+      "name": "cpu_instructions",
+      "group": "pmu",
+      "modes": [
+        "K"
+      ],
+      "unit": "instructions",
+      "scope": "selected-cgroup-or-cpuset",
+      "preferred_source": "perf stat/record",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Measure and retain event coverage"
+    },
+    {
+      "name": "net_softirq_count",
+      "group": "kernel",
+      "modes": [
+        "K"
+      ],
+      "unit": "events",
+      "scope": "selected-dut-CPUs",
+      "preferred_source": "/proc/softirqs pre/post",
+      "required_for": [
+        "A",
+        "B",
+        "C"
+      ],
+      "description": "Host/global background work may confound"
+    },
+    {
+      "name": "udp_send_syscalls",
+      "group": "kernel",
+      "modes": [
+        "K"
+      ],
+      "unit": "syscalls",
+      "scope": "dut-process-cgroup",
+      "preferred_source": "sampled eBPF/perf trace",
+      "required_for": [
+        "B",
+        "C"
+      ],
+      "description": "Counts not equivalent to datagrams with GSO"
+    },
+    {
+      "name": "tcp_retransmits",
+      "group": "network",
+      "modes": [
+        "P",
+        "K"
+      ],
+      "unit": "segments",
+      "scope": "host-stack",
+      "preferred_source": "/proc/net/snmp or nstat",
+      "required_for": [
+        "A"
+      ],
+      "description": "Not applicable to QUIC B/C"
+    },
+    {
+      "name": "quic_loss_events",
+      "group": "network",
+      "modes": [
+        "C",
+        "K"
+      ],
+      "unit": "events",
+      "scope": "dut-quic-connection",
+      "preferred_source": "NGINX QUIC transport instrumentation",
+      "required_for": [
+        "B",
+        "C"
+      ],
+      "description": "Different semantics from TCP retransmit counter"
+    }
+  ]
+}

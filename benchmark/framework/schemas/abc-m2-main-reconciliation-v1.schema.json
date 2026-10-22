@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ngi541.org/schemas/abc-m2-main-reconciliation-v1.schema.json",
+  "description": "M2.1.2b offline reconciliation; not an attested in-process h2load MAIN result",
+  "type": "object",
+  "required": ["revision", "schema_version", "kind", "run_id", "attempt_id", "window_id", "arm", "source_sha256", "integrity_verified_file_bytes", "valid_application_payload_bytes", "application_goodput_mbps", "pending_gates", "qualified_primary_result", "qualification_status"],
+  "properties": {
+    "revision": {"const": "ngi541-abc-m2.1.2b-main-evidence-r1"},
+    "schema_version": {"const": 1},
+    "kind": {"const": "m2-main-payload-reconciliation"},
+    "run_id": {"type":"string", "minLength":1},
+    "attempt_id": {"type":"string", "minLength":1},
+    "window_id": {"type":"string", "minLength":1},
+    "arm": {"enum":["A","B","C"]},
+    "integrity_verified_file_bytes": {"type":"integer","minimum":0},
+    "qualified_primary_result": {"const":false},
+    "qualification_status": {"const":"evidence-only-not-qualified"},
+    "client_phase_origin_attested": {"const":false},
+    "ledger_to_h2load_execution_attested": {"const":false},
+    "pending_gates": {"type":"array","minItems":1,"items":{"type":"string"}},
+    "valid_application_payload_bytes": {"$ref":"#/$defs/notQualified"},
+    "application_goodput_mbps": {"$ref":"#/$defs/notQualified"}
+  },
+  "$defs":{"notQualified":{"type":"object","required":["state","value","reason"],"properties":{"state":{"const":"unavailable"},"value":{"type":"null"},"reason":{"type":"string","minLength":1}}}}
+  }
+}
