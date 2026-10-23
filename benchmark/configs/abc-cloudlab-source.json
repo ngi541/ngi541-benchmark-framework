@@ -1,0 +1,14 @@
+{
+  "schema_version": 3,
+  "experiment": "ngi541-http3-abc",
+  "nodes": {
+    "server": "ivanets@clnode180.clemson.cloudlab.us",
+    "client": "ivanets@clnode148.clemson.cloudlab.us"
+  },
+  "inputs": {
+    "server_build": "integration/versions/versions.env",
+    "client_build": "benchmark/configs/r6.5.4.2-pi-http3-loadgen.json",
+    "corpus": "benchmark/configs/r6.5.3d-scientific-corpus.json"
+  },
+  "connection_smoke": true
+}
