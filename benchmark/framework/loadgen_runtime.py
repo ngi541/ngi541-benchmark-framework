@@ -290,12 +290,33 @@ def _runtime_prefix_for_home(definition: dict[str, Any], home: str) -> str:
     return f"{home.rstrip('/')}/{root}/{digest}"
 
 
-def render_build_script(definition: dict[str, Any]) -> str:
+def render_build_script(
+    definition: dict[str, Any], *, profile: str = "legacy", runtime_identity: str | None = None
+) -> str:
+    """Render from the native dependency graph; default preserves frozen R6 bytes.
+
+    cloudlab-http2-http3 is a separate versioned execution profile, not a
+    post-processing transformation of an R6 shell script.
+    """
     validate_definition(definition)
-    prefix = _runtime_prefix_shell(definition)
+    if profile not in ("legacy", "cloudlab-http2-http3"):
+        raise FrameworkError("unsupported loadgen build profile")
+    modern = profile == "cloudlab-http2-http3"
+    if modern:
+        if not _wants_h2load(definition) or _nghttp2_patch_spec(definition) is None:
+            raise FrameworkError("CloudLab HTTP2+HTTP3 requires pinned nghttp2/h2load patch")
+        if not isinstance(runtime_identity, str) or not re.fullmatch(r"[0-9a-f]{64}", runtime_identity):
+            raise FrameworkError("CloudLab runtime identity must be full SHA-256")
+        prefix = "$HOME/.local/ngi541/cloudlab/loadgen/" + runtime_identity
+    else:
+        if runtime_identity is not None:
+            raise FrameworkError("legacy profile does not accept runtime_identity")
+        prefix = _runtime_prefix_shell(definition)
     src = definition["sources"]
     jobs = int(definition.get("build", {}).get("jobs", 4))
     want_h2load = _wants_h2load(definition)
+    if modern:
+        jobs = '${BUILD_JOBS}'
 
     def q(v: str) -> str:
         return shlex.quote(v)
@@ -315,7 +336,7 @@ def render_build_script(definition: dict[str, Any]) -> str:
     curl_v = src["curl"]["version"]
     nghttp2_v = src.get("nghttp2", {}).get("version")
     nghttp2_patch = _resolve_nghttp2_patch(definition) if want_h2load else None
-    digest = definition_sha256(definition)
+    digest = runtime_identity if modern else definition_sha256(definition)
 
     h2load_reuse_gate = ""
     h2load_build = ""
@@ -329,7 +350,18 @@ def render_build_script(definition: dict[str, Any]) -> str:
             ).decode("ascii")
             patch_sha = nghttp2_patch["sha256"]
 
-            h2load_patch_materialize = f"""
+            if modern:
+                h2load_patch_materialize = f"""
+echo "==> check bundled nghttp2 patch"
+H2LOAD_PATCH="$BUNDLE_DIR/nghttp2-h2load.patch"
+H2LOAD_PATCH_SHA=$(sha256sum "$H2LOAD_PATCH" | awk '{{print $1}}')
+if [ "$H2LOAD_PATCH_SHA" != {q(patch_sha)} ]; then
+  echo "nghttp2 patch SHA-256 mismatch: expected={patch_sha} actual=$H2LOAD_PATCH_SHA" >&2
+  exit 26
+fi
+"""
+            else:
+                h2load_patch_materialize = f"""
 echo "==> materialize pinned nghttp2 patch"
 H2LOAD_PATCH="$WORK/nghttp2-{nghttp2_v}-ngi541.patch"
 printf '%s' {q(patch_b64)} | base64 -d > "$H2LOAD_PATCH"
@@ -432,14 +464,65 @@ fi
     exit 0
   fi'''
 
+    if modern:
+        reuse_body = f'''  if "$PREFIX/curl/bin/curl" --version | grep -q 'HTTP2' && \
+     "$PREFIX/curl/bin/curl" --version | grep -q 'HTTP3' && \
+     [ -x "$PREFIX/nghttp2/bin/h2load" ] && \
+     "$PREFIX/nghttp2/bin/h2load" --help 2>&1 | grep -q -- '--h3' && \
+     ldd "$PREFIX/curl/lib/libcurl.so.4" | grep -q 'libnghttp2.so'; then
+    echo "runtime-reuse: $PREFIX"
+    exit 0
+  fi
+  echo 'ERROR: incomplete or invalid CloudLab cached runtime; refusing silent reuse' >&2
+  exit 41'''
+    cloudlab_setup = (
+        'BUNDLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n'
+        'AVAILABLE_CPUS=$(nproc)\n'
+        "AVAILABLE_MEM_KIB=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)\n"
+        'MEM_JOBS=$((AVAILABLE_MEM_KIB / 1572864))\n'
+        '(( MEM_JOBS >= 1 )) || MEM_JOBS=1\n'
+        'BUILD_JOBS=${ABC_BUILD_JOBS:-$AVAILABLE_CPUS}\n'
+        '[[ "$BUILD_JOBS" =~ ^[1-9][0-9]*$ ]] || exit 42\n'
+        '(( BUILD_JOBS <= AVAILABLE_CPUS )) || BUILD_JOBS=$AVAILABLE_CPUS\n'
+        '(( BUILD_JOBS <= MEM_JOBS )) || BUILD_JOBS=$MEM_JOBS\n'
+        '(( BUILD_JOBS <= 16 )) || BUILD_JOBS=16\n'
+        'echo "CloudLab loadgen parallel jobs: $BUILD_JOBS"\n'
+    ) if modern else ''
+    curl_pkg_h2 = ':$PREFIX/nghttp2/lib/pkgconfig' if modern else ''
+    curl_ld_h2 = ' -Wl,-rpath,$PREFIX/nghttp2/lib' if modern else ''
+    curl_config_h2 = '    --with-nghttp2="$PREFIX/nghttp2" ' + chr(92) + chr(10) if modern else ''
+    h2load_before_curl = h2load_build if modern else ''
+    h2load_after_curl = '' if modern else h2load_build
+    modern_cache_guard = r"""if [ -d "$PREFIX" ]; then
+  if [ ! -f "$PREFIX/definition.sha256" ]; then
+    echo 'ERROR: incomplete CloudLab runtime prefix; refusing reuse or overwrite' >&2
+    exit 43
+  fi
+  if [ "$(cat "$PREFIX/definition.sha256")" != "$DEF_SHA" ]; then
+    echo 'ERROR: CloudLab runtime identity mismatch; refusing overwrite' >&2
+    exit 44
+  fi
+fi
+""" if modern else ''
+    extra_gate = r'''
+if ! "$PREFIX/curl/bin/curl" --version | grep -q 'HTTP2'; then
+  echo 'built curl does not advertise HTTP2' >&2
+  exit 37
+fi
+if ! ldd "$PREFIX/curl/lib/libcurl.so.4" | grep -q 'libnghttp2.so'; then
+  echo 'libcurl is not linked with nghttp2' >&2
+  exit 38
+fi
+''' if modern else '\n'
+
     script = f'''set -euo pipefail
 PREFIX={prefix}
 DEF_SHA={q(digest)}
-WORK="$PREFIX/work"
+{cloudlab_setup}WORK="$PREFIX/work"
 SRC="$WORK/src"
 DL="$WORK/downloads"
 LOG="$PREFIX/build.log"
-mkdir -p "$SRC" "$DL" "$PREFIX"
+{modern_cache_guard}mkdir -p "$SRC" "$DL" "$PREFIX"
 
 if [ -x "$PREFIX/curl/bin/curl" ] && [ -f "$PREFIX/definition.sha256" ] && [ "$(cat "$PREFIX/definition.sha256")" = "$DEF_SHA" ]; then
 {reuse_body}
@@ -493,26 +576,25 @@ tar -xf "$DL/ngtcp2-{ngtcp2_v}.tar.gz" -C "$SRC"
   make install
 ) >>"$LOG" 2>&1
 
-echo "==> build curl {curl_v}"
+{h2load_before_curl}echo "==> build curl {curl_v}"
 tar -xf "$DL/curl-{curl_v}.tar.xz" -C "$SRC"
 (
   cd "$SRC/curl-{curl_v}"
-  export PKG_CONFIG_PATH="$PREFIX/openssl/lib/pkgconfig:$PREFIX/nghttp3/lib/pkgconfig:$PREFIX/ngtcp2/lib/pkgconfig"
-  export LDFLAGS="-Wl,-rpath,$PREFIX/openssl/lib -Wl,-rpath,$PREFIX/nghttp3/lib -Wl,-rpath,$PREFIX/ngtcp2/lib"
+  export PKG_CONFIG_PATH="$PREFIX/openssl/lib/pkgconfig:$PREFIX/nghttp3/lib/pkgconfig:$PREFIX/ngtcp2/lib/pkgconfig{curl_pkg_h2}"
+  export LDFLAGS="-Wl,-rpath,$PREFIX/openssl/lib -Wl,-rpath,$PREFIX/nghttp3/lib -Wl,-rpath,$PREFIX/ngtcp2/lib{curl_ld_h2}"
   ./configure \
     --prefix="$PREFIX/curl" \
     --with-openssl="$PREFIX/openssl" \
     --with-nghttp3="$PREFIX/nghttp3" \
     --with-ngtcp2="$PREFIX/ngtcp2" \
-    --without-libpsl \
+{curl_config_h2}    --without-libpsl \
     --without-brotli \
     --without-zstd
   make -j{jobs}
   make install
 ) >>"$LOG" 2>&1
 
-{h2load_build}
-if ! "$PREFIX/curl/bin/curl" --version | grep -q 'HTTP3'; then
+{h2load_after_curl}{extra_gate}if ! "$PREFIX/curl/bin/curl" --version | grep -q 'HTTP3'; then
   echo "built curl does not advertise HTTP3" >&2
   "$PREFIX/curl/bin/curl" --version >&2 || true
   exit 21

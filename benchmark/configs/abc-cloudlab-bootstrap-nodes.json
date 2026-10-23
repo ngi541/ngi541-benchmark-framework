@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "nodes": [
+    {"node_id": "node0", "communication_role": "server", "stack_profile": "nginx-ngi541"},
+    {"node_id": "node1", "communication_role": "client", "stack_profile": "http-loadgen"}
+  ]
+}
